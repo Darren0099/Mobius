@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (QApplication, QComboBox, QFileDialog, QFrame, QGr
 from PySide6.QtCore import QUrl
 
 from .engine import BY_KEY, OPERATIONS, IMAGES, PDF, WORD, Result, convert, supported
-from .assistant_core import parse_command, execute
+from .assistant_core import parse_command, execute, resolve_document
 
 COLORS = {
     'bg': '#141414', 'tile': '#222322', 'tile_hover': '#303328', 'line': '#454941',
@@ -722,6 +722,7 @@ class MobiusWindow(QWidget):
         if result.warnings:
             msg += '  Catatan: ' + result.warnings[0][:95]
         self.note.setText(msg)
+        self.assistant_response.setText(msg)
         if self.tray is not None:
             self.tray.showMessage('Mobius • Selesai',
                                   f'{len(result.files)} file berhasil dibuat secara offline.',
@@ -729,6 +730,7 @@ class MobiusWindow(QWidget):
 
     def _failure(self, message):
         self.note.setText('Gagal: ' + message[:160])
+        self.assistant_response.setText('Gagal: ' + message[:160])
         if self.tray is not None:
             self.tray.showMessage('Mobius • Gagal', message[:175],
                                   QSystemTrayIcon.MessageIcon.Warning, 3900)
@@ -772,6 +774,24 @@ class MobiusWindow(QWidget):
                 self.assistant_response.setText('Shutdown dibatalkan sebelum dijadwalkan.')
                 self.assistant_status.setText('●  MENUNGGU PERINTAH')
                 return
+        if intent.kind == 'convert':
+            try:
+                if self._busy:
+                    self.assistant_response.setText('Konversi lain masih berjalan. Coba setelah selesai.')
+                    return
+                path = resolve_document(intent.args['filename'], list(self.pending))
+                operation = intent.args['operation']
+                if not supported([path], operation):
+                    self.assistant_response.setText(f'Format file {path.suffix} tidak cocok untuk konversi tersebut.')
+                    return
+                self.pending = [path]
+                self._set_file_summary()
+                self.request_operation(operation)  # QThread: no frozen window
+                self.assistant_response.setText(f'Memproses {path.name} secara offline…')
+                self.command_input.clear()
+            except Exception as exc:
+                self.assistant_response.setText(f'Gagal: {exc}')
+            return
         try:
             result = execute(intent, dropped=list(self.pending), output=self.destination)
         except Exception as exc:
