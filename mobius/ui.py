@@ -352,7 +352,7 @@ class MobiusWindow(QWidget):
         self._recovery_hotkey.activated.connect(self.force_expand)
         self._recovery_hotkey.unavailable.connect(self._notify)
         self._recovery_hotkey.start()
-        self._recoverable = self.tray is not None or sys.platform == 'win32'
+        self._recoverable = self.tray is not None  # never hide without tray fallback
         self.visibility_timer = QTimer(self)
         self.visibility_timer.timeout.connect(self._sync_desktop_visibility)
         self.visibility_timer.start(260)
@@ -397,7 +397,7 @@ class MobiusWindow(QWidget):
         self.tray = QSystemTrayIcon(QIcon(str(asset)), self)
         self.tray.setToolTip('Mobius • selalu mendengarkan saat aktif')
         menu = QMenu()
-        menu.addAction('Tampilkan Mobius', self.force_expand)
+        menu.addAction('Tampilkan Mobius  ·  Ctrl+Alt+M', self.force_expand)
         self.mic_action = menu.addAction('Mikrofon aktif')
         self.mic_action.setCheckable(True)
         self.mic_action.setChecked(True)
