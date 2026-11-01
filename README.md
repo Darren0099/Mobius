@@ -96,3 +96,16 @@ python -m pytest -q tests
 ## Pengembangan selanjutnya
 
 Kalau ingin kemampuan AI yang lebih luas: integrasikan LLM **lokal** (misal via Ollama) di belakang *permission broker* yang meminta izin sebelum tindakan berbahaya. Arsitektur ini sengaja membatasi eksekusi langsung demi keamanan, terutama pada input mikrofon yang mungkin salah mengenali perintah.
+
+## v0.3 Ambient Assistant
+
+Satu panel menggabungkan file converter dan assistant; tombol mode terpisah disembunyikan. Mendengarkan secara otomatis setelah startup bila `install-voice-windows.bat` sudah dijalankan. Ucapkan "Mobius" dahulu. Mic dan konversi file diproses offline. Untuk bahasa santai/percakapan, install Ollama Windows lalu jalankan `ollama pull qwen2.5:3b` atau `install-ai-windows.bat`. Model AI dijalankan lokal melalui 127.0.0.1, tanpa API key. Browser tetap memerlukan internet untuk mencari.
+
+Bar hanya tampil saat Windows desktop aktif, atau sementara ketika pengguna sengaja membuka lewat tray ataupun drag ke area tengah atas. Aplikasi lain tidak ditutupi terus-menerus. Drag reveal tidak selalu bisa dikenali di aplikasi fullscreen; gunakan tray jika perlu. Shutdown memerlukan konfirmasi. AI tidak diberi hak menjalankan shell atau perintah arbitrer.
+
+Pembaruan jika folder hasil `git clone`:
+```powershell
+git pull --ff-only origin main
+.\run-windows.bat
+```
+Jika sumber awal berasal dari ZIP, lakukan `git clone https://github.com/Darren0099/Mobius.git` terlebih dahulu dalam folder baru (ZIP tidak memiliki metadata Git).

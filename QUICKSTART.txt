@@ -11,3 +11,5 @@ MOBIUS - OFFLINE WINDOWS DESKTOP ASSISTANT
 9. build-windows.bat membuat dist/Mobius.exe di Windows.
 
 Untuk daftar perintah, kualitas konversi, dan privasi lihat README.md.
+
+Mobius v0.3: install-ai-windows.bat untuk Qwen lokal setelah Ollama dipasang.

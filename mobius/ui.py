@@ -19,6 +19,8 @@ from PySide6.QtCore import QUrl
 
 from .engine import BY_KEY, OPERATIONS, IMAGES, PDF, WORD, Result, convert, supported
 from .assistant_core import parse_command, execute, resolve_document
+from .local_ai import interpret
+from .desktop_visibility import foreground_class, should_show, left_mouse_down
 
 COLORS = {
     'bg': '#141414', 'tile': '#222322', 'tile_hover': '#303328', 'line': '#454941',
@@ -191,11 +193,26 @@ class ConvertWorker(QObject):
             self.done.emit()
 
 
+class IntentWorker(QObject):
+    ready = Signal(object)
+    done = Signal()
+    def __init__(self, phrase):
+        super().__init__()
+        self.phrase = phrase
+    def run(self):
+        try:
+            self.ready.emit(interpret(self.phrase))
+        except Exception as exc:
+            from .assistant_core import Intent
+            self.ready.emit(Intent('error', str(exc)))
+        finally:
+            self.done.emit()
+
 class MobiusWindow(QWidget):
     COMPACT_W = 238
     COMPACT_H = 54
     OPEN_W = 868
-    OPEN_H = 533
+    OPEN_H = 610
 
     def __init__(self):
         super().__init__()
@@ -320,6 +337,7 @@ class MobiusWindow(QWidget):
         self.assistant_tab = QWidget()
         self.assistant_tab.setObjectName('assistantTab')
         self.tabs.addTab(self.assistant_tab, '✦  MOBIUS ASSISTANT')
+        self.tabs.tabBar().hide()
         assistant = QVBoxLayout(self.assistant_tab)
         assistant.setContentsMargins(14, 12, 14, 10)
         assistant.setSpacing(12)
@@ -386,10 +404,19 @@ class MobiusWindow(QWidget):
         hint = QLabel('VOICE SETUP  ·  Jalankan install-voice-windows.bat satu kali, lalu bisa offline.')
         hint.setObjectName('voiceHint')
         assistant.addWidget(hint)
+        # One unified visible panel: the assistant status and controls join file tools.
+        studio.insertWidget(0, self.assistant_status)
+        studio.insertWidget(1, self.assistant_response)
+        studio.insertWidget(2, self.handsfree_button)
+        self.tabs.setCurrentWidget(self.studio_tab)
 
         self.voice_thread = None
         self.voice_worker = None
         self.handsfree_active = False
+        self._intent_thread = None
+        self._intent_worker = None
+        self._reveal_until = 0.0
+        self._drag_origin = None
         self.panel.hide()
 
         self._animation = QPropertyAnimation(self, b'geometry', self)
@@ -401,6 +428,37 @@ class MobiusWindow(QWidget):
         self._collapse_timer.timeout.connect(self._auto_collapse)
         self._set_geometry(self.COMPACT_W, self.COMPACT_H)
         self._setup_tray()
+        self._desktop_timer = QTimer(self)
+        self._desktop_timer.timeout.connect(self._sync_visibility)
+        self._desktop_timer.start(250)
+        QTimer.singleShot(1100, self.toggle_handsfree)  # always listen after startup
+
+    def _sync_visibility(self):
+        if sys.platform != 'win32':
+            return
+        now = time.monotonic()
+        screen = QApplication.primaryScreen().availableGeometry()
+        pos = QCursor.pos()
+        held = left_mouse_down()
+        near_top = abs(pos.x() - screen.center().x()) < 155 and screen.y() <= pos.y() < screen.y()+75
+        if held:
+            if self._drag_origin is None:
+                self._drag_origin = pos
+            moved = abs(pos.x()-self._drag_origin.x()) + abs(pos.y()-self._drag_origin.y()) > 28
+            if moved and near_top:
+                self._reveal_until = now + 2.5
+        else:
+            self._drag_origin = None
+        if self._drag_active and held:
+            self._reveal_until = now + 3
+        show = should_show(foreground_class(), temporary=now < self._reveal_until,
+                           dragging_near_top=self._drag_active,
+                           own_foreground=self.isActiveWindow() and self._expanded)
+        if show and not self.isVisible():
+            self.show()
+        elif not show and self.isVisible():
+            self.set_expanded(False)
+            self.hide()
 
     def _style(self):
         return """
@@ -465,7 +523,7 @@ class MobiusWindow(QWidget):
             startup.setCheckable(True)
             startup.setChecked(self._is_startup_enabled())
             startup.toggled.connect(self._set_startup_enabled)
-        menu.addAction('Buka Assistant', self.open_assistant)
+        menu.addAction('Tampilkan Mobius', self.force_expand)
         menu.addSeparator()
         quit_action = menu.addAction('Keluar dari Mobius')
         quit_action.triggered.connect(QApplication.instance().quit)
@@ -591,9 +649,11 @@ class MobiusWindow(QWidget):
         self.update()
 
     def toggle(self):
+        self._reveal_until = time.monotonic() + 18
         self.set_expanded(not self._expanded)
 
     def force_expand(self):
+        self._reveal_until = time.monotonic() + 18
         self.show()
         self.set_expanded(True)
         self.raise_()
@@ -615,6 +675,7 @@ class MobiusWindow(QWidget):
         if paths and all(p.suffix.lower() in (PDF | WORD | IMAGES) for p in paths):
             event.acceptProposedAction()
             self._drag_active = True
+            self._reveal_until = time.monotonic() + 15
             self._collapse_timer.stop()
             if not self._expanded:
                 self.set_expanded(True)
@@ -750,20 +811,37 @@ class MobiusWindow(QWidget):
 
     def open_assistant(self):
         self.force_expand()
-        self.tabs.setCurrentWidget(self.assistant_tab)
-        self.command_input.setFocus()
+        self.tabs.setCurrentWidget(self.studio_tab)
 
     def fill_command(self, command: str):
         self.command_input.setText(command)
         self.command_input.setFocus()
 
     def handle_command(self):
-        command = self.command_input.text().strip()
-        if not command:
-            self.assistant_response.setText('Masukkan perintah terlebih dahulu.')
+        phrase = self.command_input.text().strip()
+        if not phrase or self._intent_thread is not None:
             return
-        intent = parse_command(command)
+        self.assistant_status.setText('●  Memahami perintah lokal...')
+        self._intent_thread = QThread(self)
+        self._intent_worker = IntentWorker(phrase)
+        self._intent_worker.moveToThread(self._intent_thread)
+        self._intent_thread.started.connect(self._intent_worker.run)
+        self._intent_worker.ready.connect(self._handle_intent)
+        self._intent_worker.done.connect(self._intent_thread.quit)
+        self._intent_worker.done.connect(self._intent_worker.deleteLater)
+        self._intent_thread.finished.connect(self._intent_thread.deleteLater)
+        self._intent_thread.finished.connect(self._intent_done)
+        self._intent_thread.start()
+
+    def _intent_done(self):
+        self._intent_thread = None
+        self._intent_worker = None
+
+    def _handle_intent(self, intent):
         self.assistant_status.setText('●  PERINTAH DIPROSES LOKAL')
+        if intent.kind == 'chat':
+            self.assistant_response.setText(intent.detail)
+            return
         if intent.dangerous:
             seconds = intent.args['seconds']
             yes = QMessageBox.question(self, 'Konfirmasi shutdown Windows',
@@ -823,7 +901,7 @@ class MobiusWindow(QWidget):
         if self.voice_thread is not None:
             return
         from .voice import VoiceWorker
-        self.open_assistant()
+        # Listening never activates or expands the window.
         self.voice_button.setEnabled(False)
         self.voice_button.setText('●  Merekam…')
         self.assistant_status.setText('●  HANDS-FREE LOKAL AKTIF' if self.handsfree_active else '●  MENDENGARKAN 7 DETIK (LOKAL)')
@@ -844,7 +922,7 @@ class MobiusWindow(QWidget):
         self.assistant_response.setText('Terdengar: ' + phrase)
         # Only dispatch when user explicitly speaks the wake word; no accidental
         # actions from unrecognised nearby conversation.
-        if re.match(r'^(?:hey|hai|halo)?\s*mobius\b', phrase.strip(), re.IGNORECASE):
+        if re.match(r'^(?:(?:hey|hei|hai|halo)\s+)?(?:mobius|mobi\s+us)\b', phrase.strip(), re.IGNORECASE):
             self.handle_command()
         else:
             self.assistant_response.setText('Terdengar: ' + phrase + ' — awali perintah dengan “Mobius” atau tekan Jalankan.')
