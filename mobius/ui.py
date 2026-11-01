@@ -21,6 +21,7 @@ from .engine import BY_KEY, OPERATIONS, IMAGES, PDF, WORD, Result, convert, supp
 from .assistant_core import parse_command, execute, resolve_document
 from .local_ai import interpret
 from .desktop_visibility import foreground_class, should_show, left_mouse_down
+from .hotkey import RecoveryHotkey
 
 COLORS = {
     'bg': '#141414', 'tile': '#222322', 'tile_hover': '#303328', 'line': '#454941',
@@ -415,8 +416,9 @@ class MobiusWindow(QWidget):
         self.handsfree_active = False
         self._intent_thread = None
         self._intent_worker = None
-        self._reveal_until = 0.0
+        self._reveal_until = time.monotonic() + 8  # startup preview
         self._drag_origin = None
+        self._manual_override = False
         self.panel.hide()
 
         self._animation = QPropertyAnimation(self, b'geometry', self)
@@ -428,6 +430,9 @@ class MobiusWindow(QWidget):
         self._collapse_timer.timeout.connect(self._auto_collapse)
         self._set_geometry(self.COMPACT_W, self.COMPACT_H)
         self._setup_tray()
+        self._recovery_hotkey = RecoveryHotkey(self)
+        self._recovery_hotkey.activated.connect(self.force_expand)
+        self._recovery_hotkey.start()
         self._desktop_timer = QTimer(self)
         self._desktop_timer.timeout.connect(self._sync_visibility)
         self._desktop_timer.start(250)
@@ -453,12 +458,13 @@ class MobiusWindow(QWidget):
             self._reveal_until = now + 3
         show = should_show(foreground_class(), temporary=now < self._reveal_until,
                            dragging_near_top=self._drag_active,
-                           own_foreground=self.isActiveWindow() and self._expanded)
+                           own_foreground=self.isActiveWindow(),
+                           panel_open=self._expanded or self._manual_override,
+                           recovery_available=self.tray is not None or sys.platform == 'win32')
         if show and not self.isVisible():
             self.show()
         elif not show and self.isVisible():
-            self.set_expanded(False)
-            self.hide()
+            self.hide()  # expanded panels never disappear without user action
 
     def _style(self):
         return """
@@ -649,11 +655,15 @@ class MobiusWindow(QWidget):
         self.update()
 
     def toggle(self):
-        self._reveal_until = time.monotonic() + 18
-        self.set_expanded(not self._expanded)
+        expanded = not self._expanded
+        self._manual_override = expanded
+        self._reveal_until = time.monotonic() + (10 if expanded else 3)
+        self.show()
+        self.set_expanded(expanded)
 
     def force_expand(self):
-        self._reveal_until = time.monotonic() + 18
+        self._manual_override = True
+        self._reveal_until = time.monotonic() + 10
         self.show()
         self.set_expanded(True)
         self.raise_()
@@ -806,7 +816,7 @@ class MobiusWindow(QWidget):
         # The panel intentionally remains open following a successful drop.
         if self._drag_active:
             return
-        if not self._busy and not self.underMouse() and self._expanded and not self.pending:
+        if not self._manual_override and not self._busy and not self.underMouse() and self._expanded and not self.pending:
             self.set_expanded(False)
 
     def open_assistant(self):
@@ -843,6 +853,7 @@ class MobiusWindow(QWidget):
             self.assistant_response.setText(intent.detail)
             return
         if intent.dangerous:
+            self.force_expand()  # make the confirmation visible even if island was hidden
             seconds = intent.args['seconds']
             yes = QMessageBox.question(self, 'Konfirmasi shutdown Windows',
                 f'{intent.detail}\n\nLaptop akan ditutup otomatis. Simpan pekerjaan terlebih dahulu.\n\nLanjutkan?',
@@ -891,6 +902,7 @@ class MobiusWindow(QWidget):
         self.start_voice()
 
     def stop_voice(self):
+        self._recovery_hotkey.stop()
         if self.voice_worker is not None:
             self.voice_worker.stop()
         if self.voice_thread is not None and self.voice_thread.isRunning():
