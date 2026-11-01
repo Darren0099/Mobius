@@ -1,111 +1,98 @@
-# Mobius — Offline Desktop Assistant & File Studio
+# MOBIUS v0.3 · Ambient Offline Assistant + File Studio
 
-**Mobius** adalah aplikasi Windows 10/11 bergaya *dynamic island* di tengah atas layar: bar dengan mata animasi, drag-and-drop alat konversi file, dan asisten komputer melalui perintah teks atau suara Bahasa Indonesia.
+**Mobius** adalah asisten Windows 10/11 yang mendengarkan perintah setelah startup dan menyatukan konversi dokumen serta asisten suara dalam **satu layar**. Bar kecil berwarna lime hanya terlihat saat desktop kosong/aktif. Saat browser atau aplikasi lain sedang aktif, bar disembunyikan, tetapi pendengar suara tetap berjalan. Tidak ada layanan cloud yang menerima rekaman suara atau file.
 
-**Tidak ada server, API key, akun, maupun telemetri.** File dan rekaman suara diproses secara lokal. Pencarian lewat browser tentu membutuhkan internet untuk menampilkan hasil Google. Instalasi pertama dependensi dan model suara juga membutuhkan internet **sekali saja**.
-
-## Desain
-
-- Warna utama `#C7FF10` (electric lime), sekunder `#83AF3B`, black `#141414`, off-white `#F5F5F8`, warm white `#FBF8EF` — mengacu pada referensi desain.
-- Font Urbanist dipilih bila sudah tersedia di Windows, dengan fallback Segoe UI. Font **tidak** disertakan dalam paket.
-- Bar selalu di atas di tengah atas monitor; berkedip dan mengikuti kursor; melebar saat diseret file atau diklik.
-- Dua tab: **File Studio** dan **Mobius Assistant**.
-
-## Perintah yang didukung
-
-| Ucapkan atau ketik | Hasil |
-| --- | --- |
-| `Mobius buka notepad dan kalkulator` | Jalankan beberapa aplikasi Windows **dari daftar yang diizinkan** |
-| `Mobius buka browser dan cari tutorial Python` | Buka pencarian browser default (perlu internet) |
-| `Mobius ubah PDF laporan menjadi img` | Cari `laporan.pdf` di Desktop/Documents/Downloads atau drop file; simpan gambar ke folder output |
-| `Mobius ubah Word laporan menjadi PDF` | Konversi Word secara lokal |
-| `Mobius matikan laptop dalam waktu 10 menit lagi` | Tampilkan **konfirmasi** sebelum menjadwalkan shutdown 600 detik |
-| `Mobius batalkan shutdown` | Batalkan jadwal shutdown |
-| `Mobius putar musik acak` | Putar file audio acak dari folder Windows Music melalui pemutar default |
-
-Assistant menggunakan *intent parser* yang berjalan lokal, **bukan AI percakapan generatif atau pengontrol komputer yang menguasai semua aplikasi**. Perintah yang belum dikenali akan diberi penjelasan; teks dari mikrofon **tidak** pernah dieksekusi sebagai kode shell. Pencarian nama file terbatas pada folder user standar tanpa pemindaian seluruh drive.
-
-**Aplikasi yang bisa dibuka:** Notepad, Calculator, Explorer, Paint, Terminal, Command Prompt, VS Code, Chrome, Edge, Firefox, Spotify, Discord (apabila terpasang dan command tersedia). Tambahkan alias terpercaya di `mobius/assistant_core.py` agar aplikasi lain dikenali.
-
-## Sembilan alat konversi file
-
-| Alat | Catatan |
-| --- | --- |
-| Gambar → PDF | Gabungkan banyak gambar ke satu PDF |
-| PDF → Gambar | Ekspor per halaman JPG/PNG/WEBP |
-| Word → PDF | Mengutamakan MS Word / LibreOffice jika terpasang |
-| PDF → Word | Mengutamakan pdf2docx jika terpasang, fallback ekstraksi teks |
-| Gabung PDF | Minimal 2 PDF |
-| Pisah PDF | Satu PDF per halaman |
-| Kompres PDF | Optimasi lossless, tidak selalu menjadi lebih kecil |
-| Putar PDF | Rotasi 90° |
-| Ubah Format Gambar | PNG, JPG, WEBP |
-
-Folder hasil default `Documents\Mobius`. Hasil tidak menimpa nama file yang sudah ada. **PDF hasil scan belum memiliki OCR**, dan layout PDF→Word kompleks mungkin tidak identik.
-
-## Instalasi Windows
-
-1. Pastikan Python **3.12** atau **3.11** terpasang, termasuk `py` launcher.
-2. Ekstrak folder sumber dan klik dua kali **`run-windows.bat`**. Pertama kali akan menginstal pustaka Python secara lokal. Setelah itu aplikasi bisa dijalankan tanpa koneksi.
-3. Klik bar Mobius untuk membuka dua tab, atau seret gambar/PDF/DOCX dari File Explorer ke bar untuk langsung masuk File Studio.
-4. Untuk **perintah suara**: jalankan **`install-voice-windows.bat`** **sekali saat terkoneksi internet**. Script menginstal faster-whisper dan mengunduh model multilingual `Systran/faster-whisper-base` ke `~\.mobius\models`. Setelah unduhan selesai, proses STT tidak memakai internet.
-5. Pada tab Assistant, pilih **Bicara (7s)** untuk satu instruksi, atau **Hands-free ON** untuk mengaktifkan mikrofon terus-menerus sampai kamu mematikannya. Awali perintah dengan **"Mobius"**. Pada Hands-free, deteksi ucapan dan transkripsi berjalan di laptop, dapat memakai CPU cukup besar; hasil pengenalan bisa salah dalam situasi bising.
-6. Untuk membuat **Mobius.exe** sendiri jalankan **`build-windows.bat`** di Windows. Proses build memasukkan library suara, tetapi **model** tetap harus disiapkan satu kali dengan langkah (4).
-
-**Build EXE di GitHub:** Buka tab **Actions** → pilih **Build Mobius Windows EXE** → Run workflow → unduh artifact `Mobius-Windows-exe`. Windows EXE dapat dijalankan tanpa instalasi Python terpisah; voice setup memerlukan model serta pustaka runtime yang telah dibundel.
-
-Klik kanan ikon tray untuk membuka Mobius, membuka folder hasil, mengaktifkan startup saat login Windows, atau keluar.
-
-## Keselamatan dan privasi
-
-- Hands-free **OFF secara default**; izin mikrofon diperlukan dari Windows. Audio tidak disimpan, dikirim, atau diproses di cloud.
-- Perintah shutdown memerlukan persetujuan Yes/No dengan opsi **No** sebagai default. Gunakan `Mobius batalkan shutdown` jika sudah dijadwalkan.
-- Aplikasi hanya dapat menjalankan nama aplikasi dari daftar yang diketahui; tidak menjalankan teks acak melalui `cmd` atau PowerShell.
-- Google Search membuka URL di browser: Mobius sendiri offline, tetapi halaman hasil membutuhkan internet.
-- Musik dimainkan dari file yang tersimpan secara lokal; tidak otomatis streaming Spotify/YouTube.
-- Model `faster-whisper-base` memakai CPU di Windows; bukan asisten LLM serbaguna. Hands-free bergantung pada kemampuan laptop dan noise lingkungan.
-- Fullscreen eksklusif bisa menutupi bar selalu-di-atas.
-
-## Struktur
-
-```text
-Mobius/
-├─ app.py
-├─ assets/                  # ikon Mobius
-├─ mobius/
-│  ├─ ui.py                 # dynamic island, tabs, mic, drag/drop
-│  ├─ engine.py             # offline file conversion
-│  ├─ assistant_core.py     # parser perintah dan tindakan aman
-│  └─ voice.py              # faster-whisper offline + opt-in hands-free
-├─ scripts/download_voice.py
-├─ tests/                   # tes engine dan assistant
-├─ requirements*.txt
-├─ run-windows.bat
-├─ install-voice-windows.bat
-├─ build-windows.bat
-└─ .github/workflows/windows-exe.yml
-```
-
-### Menjalankan tes
+## Instalasi dari GitHub (Windows PowerShell)
 
 ```powershell
-python -m pip install -r requirements.txt pytest
-python -m pytest -q tests
+cd "$HOME\Documents"
+git clone https://github.com/Darren0099/Mobius.git
+cd .\Mobius
+.\run-windows.bat
 ```
 
-## Pengembangan selanjutnya
+> Jika sebelumnya folder Mobius diambil dari ZIP, folder tersebut **bukan Git repository**, sehingga `git pull` tidak akan berfungsi. `git clone` dulu ke folder baru atau ikuti langkah konversi ZIP di bawah.
 
-Kalau ingin kemampuan AI yang lebih luas: integrasikan LLM **lokal** (misal via Ollama) di belakang *permission broker* yang meminta izin sebelum tindakan berbahaya. Arsitektur ini sengaja membatasi eksekusi langsung demi keamanan, terutama pada input mikrofon yang mungkin salah mengenali perintah.
+Untuk pemakaian sehari-hari, dari folder yang sudah di-`git clone`:
 
-## v0.3 Ambient Assistant
-
-Satu panel menggabungkan file converter dan assistant; tombol mode terpisah disembunyikan. Mendengarkan secara otomatis setelah startup bila `install-voice-windows.bat` sudah dijalankan. Ucapkan "Mobius" dahulu. Mic dan konversi file diproses offline. Untuk bahasa santai/percakapan, install Ollama Windows lalu jalankan `ollama pull qwen2.5:3b` atau `install-ai-windows.bat`. Model AI dijalankan lokal melalui 127.0.0.1, tanpa API key. Browser tetap memerlukan internet untuk mencari.
-
-Bar hanya tampil saat Windows desktop aktif, atau sementara ketika pengguna sengaja membuka lewat tray ataupun drag ke area tengah atas. Aplikasi lain tidak ditutupi terus-menerus. Drag reveal tidak selalu bisa dikenali di aplikasi fullscreen; gunakan tray jika perlu. Shutdown memerlukan konfirmasi. AI tidak diberi hak menjalankan shell atau perintah arbitrer.
-
-Pembaruan jika folder hasil `git clone`:
 ```powershell
 git pull --ff-only origin main
 .\run-windows.bat
 ```
-Jika sumber awal berasal dari ZIP, lakukan `git clone https://github.com/Darren0099/Mobius.git` terlebih dahulu dalam folder baru (ZIP tidak memiliki metadata Git).
+
+> `run-windows.bat` membuat `.venv` dan memasang dependensi utama. Jangan jalankan `.bat` tanpa awalan `./` atau `.\\` di PowerShell.
+
+## Agar bisa diajak bicara otomatis (dua komponen terpisah)
+
+1. **Mikrofon + pengenal suara lokal (Whisper)**: jalankan `./install-voice-windows.bat` sekali. Ini memasang `faster-whisper`, `sounddevice` dan mengunduh model multilingual **base**. Setelah model terunduh, tidak perlu jaringan untuk pengenalan suara.
+2. **Pemahaman bahasa alami fleksibel (Ollama + Qwen)**: instal [Ollama Windows](https://ollama.com/download/windows). Buka PowerShell:
+
+   ```powershell
+   ollama pull qwen2.5:3b
+   ```
+
+   Atau klik `install-ai-windows.bat` sesudah memasang Ollama. Pastikan Ollama berjalan di background saat Mobius digunakan. Model diunduh **satu kali** dan diproses lokal di laptop. Tidak diperlukan API key.
+3. Jalankan ulang Mobius dengan `./run-windows.bat`. Mobius **langsung mendengarkan** (tanpa menekan tombol dan tanpa masuk mode). Ucapkan **"Mobius"** di awal kalimat sebagai wake word: `"Mobius, bukain kalkulator dong"`, `"Mobius, coba cari cara bikin portfolio React"`, `"Mobius, menurut kamu kenapa laptop sering panas?"`.
+
+**Memahami suara ≠ memahami maksud.** Whisper mentranskripsi audio; Qwen melalui Ollama memetakan bahasa informal ke tindakan yang diizinkan dan menjawab pertanyaan umum. Jika Ollama belum dipasang, perintah yang cocok dengan parser tetap berfungsi tetapi fleksibilitasnya lebih terbatas. Penggunaan pertama membutuhkan internet untuk mengunduh Python dependencies, model Whisper dan Qwen.
+
+## Jendela yang tidak mengganggu
+
+- Saat desktop Windows aktif (kelas jendela `Progman`/`WorkerW`): bar tampil di tengah atas layar.
+- Saat Chrome/Edge, VS Code, Explorer, game atau aplikasi lain aktif: bar tersembunyi. **Mikrofon tetap mendengar**, termasuk saat bar tidak tampak.
+- Untuk drag-and-drop dari File Explorer saat bar tersembunyi, seret file ke area **tengah atas layar** dan tahan gerakan sejenak. Mobius muncul sementara sebagai target drop. Bila jendela tertentu menghalangi fitur drag, gunakan tray Mobius di kanan bawah taskbar → **Tampilkan Mobius**. Tray juga menyediakan tombol on/off mikrofon.
+- Ketika Mobius sedang aktif digunakan, panel konversi bisa ditampilkan dengan klik bar. Hasil tersimpan di `Documents/Mobius` (bisa diubah).
+- Pemunculan saat drag menggunakan polling posisi kursor Windows; **tidak menjamin** deteksi drag di semua aplikasi, remote desktop, atau mode fullscreen. Windows 10/11 diperlukan untuk fungsi desktop visibility.
+
+## Perintah suara contoh
+
+| Ucapan | Hasil |
+| --- | --- |
+| `Mobius buka notepad dan kalkulator` | Membuka aplikasi yang termasuk daftar aman |
+| `Mobius, bukain notepad dong` | Varian informal dipahami model Qwen lokal |
+| `Mobius cari tutorial Python di browser` | Buka pencarian browser default |
+| `Mobius ubah PDF laporan menjadi gambar` | Cari `laporan.pdf` pada Documents/Downloads/Desktop atau file yang di-drop |
+| `Mobius putar musik acak` | Buka file musik acak dari `Music` |
+| `Mobius matikan laptop dalam 10 menit` | **Konfirmasi wajib** sebelum menjadwalkan shutdown |
+| `Mobius batalkan shutdown` | Membatalkan shutdown terjadwal |
+| `Mobius jelaskan apa itu React` | Jawaban percakapan dari model AI lokal |
+
+Tidak semua perintah Windows dapat dieksekusi. Mobius *sengaja* tidak mengizinkan model untuk menjalankan script, shell, menghapus file, atau melakukan operasi sistem tidak terdaftar. Model menghasilkan JSON yang divalidasi oleh kode aplikasi; perintah yang tidak didukung akan dijelaskan, bukan diklaim sudah dilakukan. Rencana kedepan dapat menambah keterampilan aman dan permissions sesuai kebutuhan pengguna.
+
+## Komponen
+
+- `mobius/ui.py`: bar, drag/drop, tray, pengelolaan mikrofon, single-panel interface.
+- `mobius/desktop_visibility.py`: kebijakan tampilan hanya pada desktop aktif.
+- `mobius/voice.py`: suara offline, continuous voice capture dan deteksi wake word.
+- `mobius/local_ai.py`: Ollama `http://127.0.0.1:11434`, default `qwen2.5:3b`, peta intent yang tervalidasi.
+- `mobius/assistant_core.py`: eksekutor Windows dan parser fallback.
+- `mobius/engine.py`: konversi file lokal.
+- `tests/`: uji parser, engine, keamanan AI, dan aturan visibility.
+
+## Pengujian & build
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install pytest
+.\.venv\Scripts\python.exe -m pytest -q
+.\build-windows.bat
+```
+
+Aplikasi belum diuji end-to-end langsung pada PC Windows; uji logika dilakukan dalam lingkungan pengembangan Linux. Jika mikrofon gagal, cek **Settings > Privacy & security > Microphone** dan bahwa perangkat input default berfungsi. Bila aplikasi error saat dijalankan, lihat `Documents/Mobius/mobius-error.log`.
+
+## Catatan privasi dan keterbatasan
+
+- Saat mic aktif, audio didengarkan secara lokal; tidak diunggah maupun disimpan ke disk oleh kode Mobius.
+- Pengenalan suara awal, ketika memulai model di CPU, dapat memerlukan jeda. Whisper bukan wake-word detector khusus; ia mengonversi setiap segmen suara lalu Mobius hanya menjalankan segmen yang diawali nama Mobius. Bukan pengenalan instan dengan latensi nol.
+- Beberapa program tidak tercantum dalam daftar peluncuran dan perlu ditambahkan sebagai kemampuan baru secara terkontrol.
+- Offline untuk file, audio dan AI, **namun mencari halaman web jelas memerlukan internet**.
+- Word ke PDF paling akurat jika Microsoft Word atau LibreOffice sudah terpasang lokal; PDF hasil scan perlu OCR untuk mengekstrak teks secara berarti.
+
+Lisensi font tidak dibundel: gunakan Urbanist yang sudah terpasang atau fallback Segoe UI.
+
+## v0.4: perbaikan bar yang mendadak hilang
+
+- Bar saat startup tampil singkat selama 8 detik sehingga bisa dikenali. Ketika browser/aplikasi lain aktif, bar kembali tersembunyi setelah preview, **tetapi proses Mobius dan mikrofon tetap berjalan**.
+- Klik bar atau tekan **Ctrl+Alt+M** untuk membuka panel. Panel yang sedang terbuka **tidak akan disembunyikan otomatis** saat fokus jendela berpindah; klik bar lagi untuk menutupnya. Shortcut bekerja dari aplikasi lain melalui Windows `RegisterHotKey`; apabila bentrok dengan aplikasi lain, klik ikon Mobius di **system tray** → *Tampilkan Mobius*.
+- Tanpa system tray atau shortcut pemulihan, Mobius tidak disembunyikan otomatis.
+- Untuk melihat error yang biasanya tersembunyi karena pythonw.exe, jalankan `run-debug-windows.bat` dari folder proyek.
+- Tidak perlu memasang ulang Whisper/Ollama atau mengunduh ulang model; `git pull` hanya memperbarui source.
