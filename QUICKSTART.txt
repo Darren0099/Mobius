@@ -1,0 +1,13 @@
+MOBIUS - OFFLINE WINDOWS DESKTOP ASSISTANT
+
+1. Instal Python 3.11 / 3.12 beserta py launcher.
+2. Jalankan run-windows.bat (setup sekali butuh internet).
+3. Untuk bicara bahasa Indonesia, jalankan install-voice-windows.bat (sekali butuh internet).
+4. Drag file ke bar di tengah atas; pilih salah satu dari 9 tools.
+5. Buka tab MOBIUS ASSISTANT: ketik / ucapkan (7 detik atau Hands-free ON).
+6. Katakan "Mobius buka notepad dan kalkulator".
+7. Katakan "Mobius matikan laptop dalam waktu 10 menit lagi"; pilih Yes/No untuk konfirmasi.
+8. Klik kanan ikon tray untuk keluar atau atur startup Windows.
+9. build-windows.bat membuat dist/Mobius.exe di Windows.
+
+Untuk daftar perintah, kualitas konversi, dan privasi lihat README.md.

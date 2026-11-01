@@ -1,0 +1,32 @@
+name: Build Mobius Windows EXE
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: python -m pip install -r requirements-extended.txt -r requirements-voice.txt pyinstaller pytest
+      - name: Test parser and conversion engine
+        run: python -m pytest -q tests
+      - name: Build Windows desktop executable
+        run: >-
+          pyinstaller --noconfirm --clean --onefile --windowed
+          --name Mobius --icon assets/mobius.ico
+          --add-data "assets/mobius.ico;assets"
+          --collect-all pdf2docx --collect-all fitz
+          --collect-all faster_whisper --collect-all ctranslate2
+          --hidden-import sounddevice --hidden-import win32com.client app.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Mobius-Windows-exe
+          path: dist/Mobius.exe
