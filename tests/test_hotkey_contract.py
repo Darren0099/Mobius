@@ -22,7 +22,7 @@ def test_hotkey_declares_every_signal_connected_by_ui():
         and node.value.func.id == "Signal"
     }
     ui_source = (ROOT / "mobius" / "ui.py").read_text(encoding="utf-8")
-    connected = set(re.findall(r"self\\._recovery_hotkey\\.(\\w+)\\.connect\\(", ui_source))
+    connected = set(re.findall(r"self\._recovery_hotkey\.(\w+)\.connect\(", ui_source))
     assert connected, "No RecoveryHotkey Qt signal connections found in UI"
     assert connected <= signals, f"Undeclared RecoveryHotkey signals: {connected - signals}"
 
