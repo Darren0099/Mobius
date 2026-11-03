@@ -96,3 +96,18 @@ Lisensi font tidak dibundel: gunakan Urbanist yang sudah terpasang atau fallback
 - Tanpa system tray atau shortcut pemulihan, Mobius tidak disembunyikan otomatis.
 - Untuk melihat error yang biasanya tersembunyi karena pythonw.exe, jalankan `run-debug-windows.bat` dari folder proyek.
 - Tidak perlu memasang ulang Whisper/Ollama atau mengunduh ulang model; `git pull` hanya memperbarui source.
+## v0.5 — Robot Eyes Island (4 November 2026)
+
+Bar kompak sekarang hanya menampilkan sepasang mata robot animasi, tanpa tulisan, label status, titik, atau chevron. Ekspresi berganti antara `O O`, `> <`, `o <`, `-- --`, dan `W W` untuk idle/mendengarkan, berpikir, berhasil, dan error. Bentuk hitamnya ditempel ke tepi atas layar seperti notch/dynamic island; panel tetap terbuka saat diperlukan dan dapat dipanggil dengan `Ctrl+Alt+M`. Ini adalah efek overlay Windows, bukan modifikasi fisik kamera atau bezel layar.
+
+Dari clone GitHub yang sudah ada (jangan `git clone` lagi):
+
+```powershell
+cd "$HOME\\Documents\\Mobius-GitHub"
+git pull --ff-only origin main
+.\\run-windows.bat
+```
+
+Jika aplikasi tidak tampil, gunakan `.\\run-debug-windows.bat` atau `.\\.venv\\Scripts\\python.exe app.py` untuk melihat error. Tutup instance lama dari system tray sebelum menjalankan versi baru.
+
+Model suara yang telah disimpan di `%USERPROFILE%\\.mobius\\models` digunakan bersama oleh semua clone. **Dependensi Python terpasang per folder `.venv`**, jadi clone baru perlu menjalankan `.\\install-voice-windows.bat` sekali jika `faster-whisper` belum terpasang pada environment tersebut. Unduhan model yang sama akan menggunakan cache lama selama masih utuh.
