@@ -300,13 +300,15 @@ class MobiusWindow(QWidget):
         self._expanded = False
         self._busy = False
         self._drag_active = False
-        self._temporary_until = time.monotonic() + 8.0  # brief launch preview; never vanish instantly
+        self._temporary_until = time.monotonic() + 12.0  # brief first-run preview; not a permanent overlay
         self._drag_armed_at = None
         self._mouse_press_start = None
         self._voice_failed = False
         self._was_visible = True
         self._manual_override = False
         self._recoverable = False
+        self._show_over_apps = False  # defaults to desktop-only as requested
+        self._edge_hover_since = None
         self.pending: list[Path] = []
         self.destination = Path.home() / 'Documents' / 'Mobius'
         self.destination.mkdir(parents=True, exist_ok=True)
@@ -451,6 +453,10 @@ class MobiusWindow(QWidget):
         self.tray.setToolTip('Mobius • selalu mendengarkan saat aktif')
         menu = QMenu()
         menu.addAction('Tampilkan Mobius  ·  Ctrl+Alt+M', self.force_expand)
+        self.pin_action = menu.addAction('Sematkan island di semua aplikasi')
+        self.pin_action.setCheckable(True)
+        self.pin_action.setChecked(False)
+        self.pin_action.toggled.connect(self.set_show_over_apps)
         self.mic_action = menu.addAction('Mikrofon aktif')
         self.mic_action.setCheckable(True)
         self.mic_action.setChecked(True)
@@ -468,9 +474,21 @@ class MobiusWindow(QWidget):
         self.tray.activated.connect(lambda reason: self.force_expand() if reason == QSystemTrayIcon.ActivationReason.DoubleClick else None)
         self.tray.show()
 
+    def set_show_over_apps(self, enabled):
+        """Optional compact overlay; never force-enable it on startup."""
+        self._show_over_apps = bool(enabled)
+        if self._show_over_apps:
+            self.show()
+        else:
+            self._sync_desktop_visibility()
+
     def _show_context_menu(self, pos):
         menu = QMenu(self)
         menu.addAction('Buka Mobius', self.force_expand)
+        pin = menu.addAction('Sematkan island di semua aplikasi')
+        pin.setCheckable(True)
+        pin.setChecked(self._show_over_apps)
+        pin.toggled.connect(self.set_show_over_apps)
         menu.addAction('Aktif/nonaktif mikrofon', self.toggle_mic)
         menu.addAction('Keluar', QApplication.instance().quit)
         menu.exec(QCursor.pos())
@@ -579,6 +597,18 @@ class MobiusWindow(QWidget):
         is_near_top = (abs(cursor.x() - (screen.x() + screen.width()/2)) < 155 and
                        screen.y() <= cursor.y() <= screen.y()+70)
         pressed = left_mouse_down()
+        # Deliberate access when a browser is active: dwell at the very top
+        # screen edge (not the normal tabs/title bar). Avoid instant popup.
+        top_edge = (abs(cursor.x() - (screen.x() + screen.width() / 2)) <= 105
+                    and screen.y() <= cursor.y() <= screen.y() + 6)
+        if top_edge and not pressed and not self.isVisible():
+            if self._edge_hover_since is None:
+                self._edge_hover_since = now
+            elif now - self._edge_hover_since >= 0.7:
+                self._temporary_until = now + 5.0
+                self._edge_hover_since = None
+        else:
+            self._edge_hover_since = None
         if pressed:
             if self._mouse_press_start is None:
                 self._mouse_press_start = cursor
@@ -602,7 +632,9 @@ class MobiusWindow(QWidget):
         visible = should_show(cls, temporary=(now < self._temporary_until),
                               dragging_near_top=self._drag_active, own_foreground=own_window,
                               panel_open=self._expanded or self._manual_override,
-                              recovery_available=self._recoverable)
+                              recovery_available=self._recoverable,
+                              pointer_over_island=(self.isVisible() and self.underMouse()),
+                              pinned=self._show_over_apps)
         if visible and not self.isVisible():
             self.show()
         elif not visible and self.isVisible():
