@@ -111,3 +111,23 @@ git pull --ff-only origin main
 Jika aplikasi tidak tampil, gunakan `.\\run-debug-windows.bat` atau `.\\.venv\\Scripts\\python.exe app.py` untuk melihat error. Tutup instance lama dari system tray sebelum menjalankan versi baru.
 
 Model suara yang telah disimpan di `%USERPROFILE%\\.mobius\\models` digunakan bersama oleh semua clone. **Dependensi Python terpasang per folder `.venv`**, jadi clone baru perlu menjalankan `.\\install-voice-windows.bat` sekali jika `faster-whisper` belum terpasang pada environment tersebut. Unduhan model yang sama akan menggunakan cache lama selama masih utuh.
+
+## v0.5.1 — Island muncul sebentar lalu hilang
+
+**Perilaku bawaan:** Mobius menampilkan island ketika desktop Windows sedang aktif. Jika PowerShell, Chrome, atau VS Code menjadi foreground, island kompak disembunyikan agar tidak menutupi tab/aplikasi; proses asisten dan mikrofon tetap berjalan.
+
+Untuk membuka island kapan saja: tekan **Ctrl+Alt+M**, klik **Tampilkan Mobius** pada ikon system tray, atau geser kursor ke **tepi paling atas tengah layar (0–6 px) sekitar 0,7 detik** untuk memunculkan island sementara. Saat kursor berada di atas island, island tidak disembunyikan. Panel yang terbuka manual juga tidak ditutup oleh aturan ini.
+
+Di menu tray tersedia opsi **Sematkan island di semua aplikasi** (nonaktif secara bawaan). Aktifkan jika ingin bar tetap terlihat saat aplikasi lain terbuka; nonaktifkan lagi untuk kembali ke desktop-only. Perubahan ini tidak mengubah model suara atau folder output.
+
+**Membedakan hide dari crash:** Bila tidak ada jendela error dan terminal debug masih sibuk, kemungkinan Mobius hanya tersembunyi. Tekan Win+D lalu cek kembali island di tengah atas. Jika aplikasi benar-benar tertutup, gunakan `run-debug-windows.bat` dan baca log `%USERPROFILE%\\Documents\\Mobius\\mobius-error.log`. Peringatan `fitz` di versi lama bukan error fatal; engine terbaru menggunakan `pymupdf`.
+
+Update dari clone yang sudah ada:
+
+```powershell
+cd "$HOME\\Documents\\Mobius-GitHub"
+git pull --ff-only origin main
+.\\run-debug-windows.bat
+```
+
+Model Whisper yang sudah terunduh tetap disimpan di `%USERPROFILE%\\.mobius\\models`; tidak perlu mengunduh ulang.
