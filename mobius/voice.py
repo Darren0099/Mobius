@@ -1,29 +1,39 @@
-"""Optional *local* Indonesian speech recognition with faster-whisper.
+"""Local hands-free speech recognition for Indonesian, with no wake-word requirement.
 
-Two explicit microphone modes: one seven-second utterance, or opt-in
-continuous wake-word listening. Audio is never uploaded or stored. Whisper
-transcribes locally; only commands starting with 'Mobius' are dispatched.
+Microphone input and transcripts stay on this computer. No cloud STT.
+The user can disable listening in the Mobius tray or panel.
 """
 from __future__ import annotations
 
 import os
+import queue
 import threading
 from collections import deque
 from pathlib import Path
 
 from PySide6.QtCore import QObject, Signal
 
+from .voice_gate import AdaptiveSpeechGate
+
 
 def voice_model_dir() -> Path:
-    return Path(os.environ.get('MOBIUS_VOICE_MODEL_DIR', str(Path.home() / '.mobius' / 'models')))
+    return Path(os.environ.get("MOBIUS_VOICE_MODEL_DIR",
+                               str(Path.home() / ".mobius" / "models")))
 
 
 class VoiceWorker(QObject):
     success = Signal(str)
     failure = Signal(str)
+    status = Signal(str)
     finished = Signal()
 
-    def __init__(self, continuous: bool = False):
+    SAMPLE_RATE = 16000
+    BLOCK_SAMPLES = 1600  # 100 ms
+    PRE_ROLL_BLOCKS = 6   # never lose the first syllable
+    SILENCE_BLOCKS = 8    # finish after 0.8 seconds of relative silence
+    MAX_BLOCKS = 120     # cap a single utterance at 12 seconds
+
+    def __init__(self, continuous: bool = True):
         super().__init__()
         self.continuous = continuous
         self._stop = threading.Event()
@@ -31,62 +41,114 @@ class VoiceWorker(QObject):
     def stop(self):
         self._stop.set()
 
-    def _transcribe(self, model, audio, np):
-        if np.sqrt(float(np.mean(audio ** 2))) < 0.002:
-            if not self.continuous:
-                self.failure.emit('Tidak terdengar suara. Periksa mikrofon lalu coba lagi.')
+    def _transcribe(self, model, samples, np):
+        if self._stop.is_set() or not len(samples):
             return
-        segments, _ = model.transcribe(audio, language='id', beam_size=3,
-                                       vad_filter=True, condition_on_previous_text=False)
-        command = ' '.join(segment.text for segment in segments).strip()
-        if command:
-            self.success.emit(command)
-        elif not self.continuous:
-            self.failure.emit('Suara tidak dikenali. Coba ulangi perintah dengan jelas.')
+        rms = float(np.sqrt(np.mean(samples * samples)))
+        if rms < 0.0012:
+            return
+        self.status.emit("Memahami ucapan secara offline...")
+        try:
+            # Our adaptive gate has already segmented audio. Whisper's default
+            # VAD can strip short commands such as 'buka kalkulator'.
+            segments, info = model.transcribe(
+                samples, language="id", beam_size=3, vad_filter=False,
+                condition_on_previous_text=False, no_speech_threshold=0.65,
+                initial_prompt="Perintah komputer Bahasa Indonesia: buka kalkulator, "
+                               "buka notepad, cari resep di browser, buka Chrome, "
+                               "putar musik, ubah PDF menjadi gambar.")
+            phrase = " ".join(seg.text for seg in segments).strip()
+            if phrase:
+                self.success.emit(phrase)
+        finally:
+            self.status.emit("Mendengarkan perintah...")
 
     def run(self):
         try:
             import numpy as np
             import sounddevice as sd
             from faster_whisper import WhisperModel
-            cache = voice_model_dir()
-            model = WhisperModel('base', device='cpu', compute_type='int8',
-                                 download_root=str(cache), local_files_only=True)
-            sr = 16000
+
+            model_name = os.environ.get("MOBIUS_VOICE_MODEL", "base")
+            self.status.emit("Memuat model suara lokal...")
+            model = WhisperModel(model_name, device="cpu", compute_type="int8",
+                                 download_root=str(voice_model_dir()),
+                                 local_files_only=True)
+            self.status.emit("Mendengarkan perintah...")
+
             if not self.continuous:
-                audio = sd.rec(sr * 7, samplerate=sr, channels=1, dtype='float32')
+                audio = sd.rec(7 * self.SAMPLE_RATE, samplerate=self.SAMPLE_RATE,
+                               channels=1, dtype="float32")
                 sd.wait()
                 if not self._stop.is_set():
                     self._transcribe(model, audio.ravel().astype(np.float32), np)
-            else:
-                # Simple energy-gated local voice activity detector. Idle mic
-                # listens only while the user explicitly enables hands-free.
-                preroll = deque(maxlen=8)
-                frames = []
-                silent = 0
-                with sd.InputStream(samplerate=sr, channels=1, dtype='float32', blocksize=1600) as stream:
-                    while not self._stop.is_set():
-                        block, _ = stream.read(1600)
-                        samples = block.reshape(-1).copy()
-                        is_talking = float(np.sqrt(np.mean(samples ** 2))) > .016
-                        if not frames:
-                            preroll.append(samples)
-                            if is_talking:
-                                frames = list(preroll)
-                                silent = 0
-                            continue
-                        frames.append(samples)
-                        silent = 0 if is_talking else silent + 1
-                        # 1.2s silence ends phrase; 10s max to avoid long clips.
-                        if silent >= 12 or len(frames) >= 100:
-                            if len(frames) >= 5:
-                                self._transcribe(model, np.concatenate(frames).astype(np.float32), np)
-                            frames = []
-                            preroll.clear()
-                            silent = 0
-        except ImportError:
-            self.failure.emit('Fitur suara belum siap. Jalankan install-voice-windows.bat terlebih dahulu.')
+                return
+
+            gate = AdaptiveSpeechGate()
+            chunks: queue.Queue = queue.Queue(maxsize=220)
+
+            def on_audio(indata, frames, time_info, status):
+                if self._stop.is_set():
+                    return
+                block = indata[:, 0].copy()
+                try:
+                    chunks.put_nowait(block)
+                except queue.Full:
+                    # Never block the real-time PortAudio callback.
+                    try:
+                        chunks.get_nowait()
+                    except queue.Empty:
+                        pass
+                    try:
+                        chunks.put_nowait(block)
+                    except queue.Full:
+                        pass
+
+            preroll = deque(maxlen=self.PRE_ROLL_BLOCKS)
+            phrase_blocks = []
+            speech_blocks = 0
+            quiet_blocks = 0
+
+            with sd.InputStream(samplerate=self.SAMPLE_RATE, channels=1,
+                                dtype="float32", blocksize=self.BLOCK_SAMPLES,
+                                callback=on_audio):
+                while not self._stop.is_set():
+                    try:
+                        block = chunks.get(timeout=0.2)
+                    except queue.Empty:
+                        continue
+                    rms = float(np.sqrt(np.mean(block * block)))
+                    speaking = gate.is_speech(rms, continuing=bool(phrase_blocks))
+                    if not phrase_blocks:
+                        preroll.append(block)
+                        if speaking:
+                            phrase_blocks = list(preroll)
+                            speech_blocks = 1
+                            quiet_blocks = 0
+                        continue
+
+                    phrase_blocks.append(block)
+                    if speaking:
+                        speech_blocks += 1
+                        quiet_blocks = 0
+                    else:
+                        quiet_blocks += 1
+
+                    if (quiet_blocks >= self.SILENCE_BLOCKS
+                            or len(phrase_blocks) >= self.MAX_BLOCKS):
+                        if speech_blocks >= 3:
+                            audio = np.concatenate(phrase_blocks).astype(np.float32)
+                            self._transcribe(model, audio, np)
+                        phrase_blocks = []
+                        preroll.clear()
+                        speech_blocks = 0
+                        quiet_blocks = 0
+
+        except ImportError as exc:
+            self.failure.emit("Modul suara belum tersedia: " + str(exc)
+                              + ". Jalankan install-voice-windows.bat.")
         except Exception as exc:
-            self.failure.emit(f'Mikrofon/model suara tidak siap: {exc}')
+            self.failure.emit("Mikrofon atau model suara bermasalah: "
+                              + type(exc).__name__ + ": " + str(exc))
         finally:
             self.finished.emit()
