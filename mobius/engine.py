@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
 
-import fitz
+import pymupdf as fitz  # supported modern PyMuPDF API; avoids deprecated fitz alias
 from PIL import Image, ImageOps
 
 PDF = {'.pdf'}
