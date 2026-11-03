@@ -15,6 +15,7 @@ WM_QUIT = 0x0012
 
 class RecoveryHotkey(QObject):
     activated = Signal()
+    unavailable = Signal(str)  # optional hotkey registration failure must not crash UI
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -41,7 +42,8 @@ class RecoveryHotkey(QObject):
                                                  ord('M')))
         if not registered:
             self._thread_id = None
-            return  # Shortcut may be in use. System tray still works.
+            self.unavailable.emit('Ctrl+Alt+M tidak tersedia (mungkin dipakai aplikasi lain). Gunakan ikon Mobius di system tray.')
+            return  # Non-fatal: system tray still opens Mobius.
         try:
             msg = wintypes.MSG()
             while self._active.is_set():
