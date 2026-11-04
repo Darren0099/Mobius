@@ -1,4 +1,4 @@
-# v0.8.1 adaptive-height carousel and ten-second power/clock glances.
+# v0.8.2 compact clickable island; smooth browser hide/reveal and outside-click dismissal.
 name: Build Mobius Windows EXE
 
 on:
