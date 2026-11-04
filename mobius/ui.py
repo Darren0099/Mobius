@@ -192,6 +192,7 @@ class InterpretWorker(QObject):
 
 class MobiusWindow(QWidget):
     """Unified always-listening assistant and drag-drop file tool island."""
+    TIP_W, TIP_H = 134, 18   # invisible hit area, 58x5 visual line
     COMPACT_W, COMPACT_H = 124, 38
     OPEN_W, OPEN_H = 408, 255  # small floating island; conversion tools scroll internally
 
@@ -628,6 +629,13 @@ class MobiusWindow(QWidget):
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         w, h = self.width(), self.height()
+        if self._tip_mode:
+            # Only the line is painted, despite the larger drag/drop hit area.
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(QColor("#F4F4F7"))
+            p.drawRoundedRect(QRect((w - 58) // 2, 2, 58, 5), 2.5, 2.5)
+            p.end()
+            return
         radius = min(20 if self._expanded else 17, max(2, h // 2))
         shape = QPainterPath()
         shape.moveTo(0, 0)
@@ -783,11 +791,11 @@ class MobiusWindow(QWidget):
         self._animation.setDuration(235)
         self._animation.setEasingCurve(QEasingCurve.Type.InCubic)
         self._animation.setStartValue(self.geometry())
-        self._animation.setEndValue(self._rect(36, 6))
+        self._animation.setEndValue(self._rect(self.TIP_W, self.TIP_H))
         self._animation.start()
 
     def _start_tip_morph(self):
-        """Opt-in: leave a 36x6 hint, never a bar over Chrome's tabs."""
+        """Always-accessible 58x5 visible stripe in a 134x18 file-drop target."""
         if self._tip_mode and not self._hide_animating:
             return
         self._animation.stop()
@@ -795,13 +803,13 @@ class MobiusWindow(QWidget):
         self._tip_mode = True
         self.header.hide()  # a tiny tip must not display clipped robot eyes
         if not self.isVisible():
-            self.setGeometry(self._rect(36, 6))
+            self.setGeometry(self._rect(self.TIP_W, self.TIP_H))
             self.show()
             return
         self._animation.setDuration(235)
         self._animation.setEasingCurve(QEasingCurve.Type.InCubic)
         self._animation.setStartValue(self.geometry())
-        self._animation.setEndValue(self._rect(36, 6))
+        self._animation.setEndValue(self._rect(self.TIP_W, self.TIP_H))
         self._animation.start()
 
     def _start_reveal_morph(self):
@@ -821,7 +829,7 @@ class MobiusWindow(QWidget):
         self._animation.setDuration(285)
         self._animation.setEasingCurve(QEasingCurve.Type.OutQuart)
         if was_hidden:
-            self.setGeometry(self._rect(36, 6))
+            self.setGeometry(self._rect(self.TIP_W, self.TIP_H))
             self.show()
         self._animation.setStartValue(self.geometry())
         self._animation.setEndValue(self._rect(self._compact_width, self.COMPACT_H))
@@ -894,7 +902,15 @@ class MobiusWindow(QWidget):
         pressed = left_mouse_down()
         own_window = bool(self.isActiveWindow())
 
+        # On a fresh click outside the wheel, dismiss it without changing the
+        # mouse event delivered to Chrome/Explorer/desktop.
+        new_press = pressed and not self._last_left_down
         self._dismiss_outside_click(cursor, pressed, now)
+        if (new_press and self.radial.isVisible()
+                and not self.radial.geometry().contains(cursor)
+                and not self.geometry().contains(cursor)
+                and QApplication.activeModalWidget() is None):
+            self.radial.hide()
 
         # A file picker or confirmation dialog is deliberate interaction.
         # Never hide its parent while the native/Qt modal is in use.
@@ -949,7 +965,7 @@ class MobiusWindow(QWidget):
         else:
             self._drag_armed_at = None
             self._mouse_press_start = None
-        if self._drag_active and pressed:
+        if self._drag_active and pressed and not self.radial.isVisible():
             self._temporary_until = now + 2.0
 
         pointer_interacting = (self.isVisible() and self.underMouse()
@@ -966,6 +982,10 @@ class MobiusWindow(QWidget):
             pinned=self._show_over_apps,
         )
 
+        # Showing the converter does not expand the top bar: only a thin
+        # visual drop target remains while the independent center wheel works.
+        if self.radial.isVisible() and not desktop and not own_window:
+            mode = "tip"
         if mode in ('hidden', 'tip'):
             if self._expanded and QApplication.activeModalWidget() is None:
                 self._manual_override = False
@@ -985,11 +1005,23 @@ class MobiusWindow(QWidget):
             # Only explicit hover/shortcut/interaction can bring this forward.
             self._start_reveal_morph()
 
+    def mouseReleaseEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton and self._tip_mode:
+            self.open_radial_studio()
+            event.accept()
+            return
+        super().mouseReleaseEvent(event)
+
     def dragEnterEvent(self, event):
         self._drag_enter(event)
 
     def dragMoveEvent(self, event):
-        self._drag_enter(event)
+        paths = _paths(event)
+        if eligible_files(paths):
+            self._drag_active = True
+            event.acceptProposedAction()
+        else:
+            event.ignore()
 
     def dragLeaveEvent(self, event):
         self._drag_active = False
@@ -1319,6 +1351,7 @@ class MobiusWindow(QWidget):
 
     def stop_voice(self):
         self._island_pulse.stop()
+        self.radial.hide()
         self.carousel.stop()
         self.quick.stop()
         self.feedback.stop()
