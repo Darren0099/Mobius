@@ -48,7 +48,11 @@ def _paths(event) -> list[Path]:
 
 
 class Eyes(QWidget):
-    """Animated robot eyes: the only visual content on the compact island."""
+    """Reactive robot personality: cursor-following pupils, moods and drowsiness.
+
+    At rest the avatar only redraws when its gaze/expression changes. Tired
+    expressions come after inactivity; a moving cursor wakes it up.
+    """
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setFixedSize(118, 30)
@@ -57,9 +61,12 @@ class Eyes(QWidget):
         self._hold_until = 0.0
         self._expression = 'open'
         self._next_refresh = 0.0
+        self._last_cursor = QCursor.pos()
+        self._last_activity = time.monotonic()
+        self._gaze = (0, 0)
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._tick)
-        self._timer.start(70)
+        self._timer.start(115)
 
     def set_mode(self, mood: str, *, temporary_ms: int = 0):
         if temporary_ms:
@@ -68,85 +75,129 @@ class Eyes(QWidget):
         else:
             self._base_mood = mood
         self._expression = self._choose(mood)
-        self._next_refresh = time.monotonic() + 0.7
+        self._next_refresh = time.monotonic() + 0.5
         self.update()
 
-    def _choose(self, mood: str):
+    def _choose(self, mood: str) -> str:
         pools = {
-            'listening': ['open', 'open', 'curious', 'focus', 'blink'],
-            'thinking': ['squint', 'focus', 'focus', 'wink'],
-            'happy': ['smile', 'smile', 'open'],
-            'warning': ['flat', 'squint', 'focus'],
-            'sleepy': ['flat', 'flat', 'blink'],
+            'listening': ['open', 'open', 'open', 'curious', 'wink', 'blink'],
+            'thinking': ['squint', 'focus', 'focus', 'thinking', 'scan'],
+            'happy': ['smile', 'smile', 'wink', 'open'],
+            'warning': ['flat', 'squint', 'uneasy'],
+            'sleepy': ['droop', 'droop', 'flat', 'blink', 'doze'],
+            'dozing': ['doze', 'doze', 'flat'],
             'idle': ['open', 'wink', 'curious', 'blink'],
         }
         return random.choice(pools.get(mood, pools['idle']))
 
     def _tick(self):
+        if not self.isVisible():
+            return
         now = time.monotonic()
+        cursor = QCursor.pos()
+        moved = (abs(cursor.x() - self._last_cursor.x()) +
+                 abs(cursor.y() - self._last_cursor.y())) > 7
+        if moved:
+            slept = now - self._last_activity
+            self._last_activity = now
+            self._last_cursor = cursor
+            if slept > 120 and not self._flash_mood:
+                self.set_mode('happy', temporary_ms=700)
+        position = self.mapFromGlobal(cursor)
+        gaze = (max(-4, min(4, int((position.x() - self.width()/2) / 55))),
+                max(-2, min(2, int((position.y() - self.height()/2) / 55))))
+        if gaze != self._gaze:
+            self._gaze = gaze
+            self.update()
         if self._flash_mood and now >= self._hold_until:
             self._flash_mood = None
-            self._next_refresh = 0.0
+            self._next_refresh = 0
         if now < self._next_refresh:
             return
         mood = self._flash_mood or self._base_mood
+        if not self._flash_mood and mood in ('listening', 'idle'):
+            idle_seconds = now - self._last_activity
+            if idle_seconds >= 300:
+                mood = 'dozing'
+            elif idle_seconds >= 95:
+                mood = 'sleepy'
         self._expression = self._choose(mood)
-        self._next_refresh = now + (0.18 if self._expression == 'blink' else 1.1 if mood == 'thinking' else 2.2)
+        self._next_refresh = now + (0.16 if self._expression == 'blink' else
+                                    1.0 if mood == 'thinking' else 2.4)
         self.update()
 
     def paintEvent(self, event):
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
-        glow = QRadialGradient(self.width() / 2, self.height() / 2, self.width() / 1.2)
-        glow.setColorAt(0.0, QColor(199, 255, 16, 18))
-        glow.setColorAt(1.0, QColor(199, 255, 16, 0))
+        aura = QRadialGradient(self.width()/2, self.height()/2, 58)
+        aura.setColorAt(0, QColor(153, 255, 84, 35))
+        aura.setColorAt(1, QColor(0, 240, 128, 0))
         p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(QBrush(glow))
-        p.drawRoundedRect(self.rect().adjusted(2, 1, -2, -1), 14, 14)
-        p.setPen(QPen(QColor('#D7FE03'), 4.0, Qt.PenStyle.SolidLine,
+        p.setBrush(QBrush(aura))
+        p.drawRoundedRect(self.rect(), 15, 15)
+
+        color = QColor('#E8FFE9')  # white-green light from the reference
+        p.setPen(QPen(color, 3.8, Qt.PenStyle.SolidLine,
                       Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
         p.setBrush(Qt.BrushStyle.NoBrush)
         left, right = (34, 15), (84, 15)
 
-        def circle(center, radius=8):
-            x, y = center
+        def circle(c, radius=7):
+            x, y = c
+            p.setBrush(QColor('#F3FFF0'))
             p.drawEllipse(QRect(x-radius, y-radius, radius*2, radius*2))
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            if self._expression not in ('blink', 'doze'):
+                dx, dy = self._gaze
+                p.setPen(Qt.PenStyle.NoPen)
+                p.setBrush(QColor('#24854C'))
+                p.drawEllipse(QRect(x+dx-2, y+dy-2, 4, 4))
+                p.setBrush(Qt.BrushStyle.NoBrush)
+                p.setPen(QPen(color, 3.8, Qt.PenStyle.SolidLine,
+                              Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
 
-        def flat(center):
-            x, y = center
-            p.drawLine(x-8, y, x+8, y)
+        def flat(c):
+            x, y = c
+            p.drawLine(x-9, y, x+9, y)
 
-        def angle(center, inward=True):
-            x, y = center
-            if inward:
+        def angle(c, leftward=True):
+            x, y = c
+            if leftward:
                 p.drawLine(x-8, y-7, x+3, y)
                 p.drawLine(x-8, y+7, x+3, y)
             else:
                 p.drawLine(x+8, y-7, x-3, y)
                 p.drawLine(x+8, y+7, x-3, y)
 
-        def letter_w(center):
-            x, y = center
-            p.drawLine(x-10, y-5, x-4, y+5)
-            p.drawLine(x-4, y+5, x, y-1)
-            p.drawLine(x, y-1, x+4, y+5)
-            p.drawLine(x+4, y+5, x+10, y-5)
+        def w(c):
+            x,y=c
+            p.drawLine(x-10,y-5,x-4,y+5)
+            p.drawLine(x-4,y+5,x,y-1)
+            p.drawLine(x,y-1,x+4,y+5)
+            p.drawLine(x+4,y+5,x+10,y-5)
 
         expr = self._expression
         if expr == 'open':
             circle(left); circle(right)
-        elif expr == 'blink' or expr == 'flat':
+        elif expr in ('blink', 'flat', 'doze'):
             flat(left); flat(right)
         elif expr == 'wink':
-            circle(left, 7); angle(right, inward=False)
+            circle(left, 7); angle(right, False)
         elif expr == 'curious':
-            circle(left, 6); circle(right, 9)
+            circle(left, 5); circle(right, 8)
+        elif expr in ('focus', 'scan'):
+            circle(left, 5); angle(right, False)
         elif expr == 'squint':
-            angle(left, inward=True); angle(right, inward=False)
-        elif expr == 'focus':
-            circle(left, 6); angle(right, inward=False)
+            angle(left); angle(right, False)
+        elif expr == 'thinking':
+            angle(left); circle(right, 6)
         elif expr == 'smile':
-            letter_w(left); letter_w(right)
+            w(left); w(right)
+        elif expr == 'droop':
+            p.drawArc(QRect(25, 9, 18, 18), 0, 180*16)
+            p.drawArc(QRect(75, 9, 18, 18), 0, 180*16)
+        elif expr == 'uneasy':
+            flat(left); angle(right, False)
         else:
             circle(left); circle(right)
         p.end()
@@ -570,16 +621,37 @@ class MobiusWindow(QWidget):
     def paintEvent(self, event):
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
-        # Negative top inset makes the compact island appear attached to the screen edge.
-        r = self.rect().adjusted(3, -10, -3, -3)
-        body = QPainterPath()
-        body.addRoundedRect(r, 24 if self._expanded else 21, 24 if self._expanded else 21)
-        grad = QLinearGradient(0, 0, 0, self.height())
-        grad.setColorAt(0, QColor('#161616'))
-        grad.setColorAt(1, QColor('#090909'))
-        p.fillPath(body, QBrush(grad))
-        p.setPen(QPen(QColor(255, 255, 255, 22), 1.0))
-        p.drawPath(body)
+        w, h = self.width(), self.height()
+        # Flat top, rounded bottom: the island grows directly out of the
+        # display edge instead of floating below the webcam bezel.
+        radius = 28 if self._expanded else 24
+        shape = QPainterPath()
+        shape.moveTo(0, 0)
+        shape.lineTo(w, 0)
+        shape.lineTo(w, h-radius)
+        shape.quadTo(w, h, w-radius, h)
+        shape.lineTo(radius, h)
+        shape.quadTo(0, h, 0, h-radius)
+        shape.closeSubpath()
+        dark = QLinearGradient(0, 0, 0, h)
+        dark.setColorAt(0, QColor('#020907'))
+        dark.setColorAt(.68, QColor('#071A15'))
+        dark.setColorAt(1, QColor('#103E2F') if not self._expanded else QColor('#0D231B'))
+        p.fillPath(shape, QBrush(dark))
+        # Two soft glows, emerald + chartreuse, rather than Nusa's purple.
+        green = QRadialGradient(w/2, h+12, max(95, w*.54))
+        green.setColorAt(0, QColor(135, 255, 45, 126 if not self._expanded else 49))
+        green.setColorAt(.42, QColor(22, 239, 131, 58 if not self._expanded else 22))
+        green.setColorAt(1, QColor(22, 239, 131, 0))
+        p.setClipPath(shape)
+        p.fillRect(self.rect(), QBrush(green))
+        p.setClipping(False)
+        # Fine bottom edge / highlight without a bright capsule border.
+        p.setPen(QPen(QColor(148, 255, 82, 74), 1))
+        p.drawPath(shape)
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor(101, 168, 128, 90))
+        p.drawEllipse(QRect(w//2-3, 1, 6, 4))
         p.end()
 
     def _quick_changed(self, opened: bool):
