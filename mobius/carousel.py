@@ -125,8 +125,8 @@ class IslandCarousel(QWidget):
         accent = self.accents[self._index]
         self.title.setText(self.labels[self._index])
         self.title.setStyleSheet(
-            "color: #FAFAFC; font-family: 'Segoe UI Variable', 'Segoe UI'; "
-            "font-size: 13px; font-weight: 650;"
+            f"color: {accent}; font-family: 'Segoe UI Variable', 'Segoe UI'; "
+            "font-size: 13px; font-weight: 700;"
         )
         self.index_label.setText(f"{self._index + 1} / {len(self.pages)}")
         self.previous.setEnabled(self._index > 0)
@@ -134,7 +134,7 @@ class IslandCarousel(QWidget):
         for idx, dot in enumerate(self.dots):
             dot.setStyleSheet("border: none; background: transparent; padding: 0;")
             dot.setIcon(icon("indicator", 9,
-                            "#FFFFFF" if idx == self._index else "#57575E"))
+                            accent if idx == self._index else "#57545D"))
         self.page_changed.emit(self._index, self.labels[self._index])
 
     def _finish(self):
