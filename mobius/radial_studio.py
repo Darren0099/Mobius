@@ -14,7 +14,6 @@ from PySide6.QtGui import QBrush, QColor, QCursor, QFont, QPainter, QPainterPath
 from PySide6.QtWidgets import QApplication, QFileDialog, QWidget
 
 from .engine import BY_KEY, OPERATIONS, IMAGES, PDF, WORD, supported
-from .theme import ORANGE, CORAL, RED, SURFACE, SURFACE_RAISED
 
 SUPPORTED = frozenset(IMAGES | PDF | WORD)
 ACTIVE_ORANGE = "#FF812F"
