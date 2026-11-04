@@ -131,3 +131,38 @@ git pull --ff-only origin main
 ```
 
 Model Whisper yang sudah terunduh tetap disimpan di `%USERPROFILE%\\.mobius\\models`; tidak perlu mengunduh ulang.
+
+## v0.6 — Wake-free voice commands + English spoken feedback
+
+Ucapkan langsung **buka kalkulator**, **bukain Chrome dong**, atau **cari resep nasi goreng di browser**. Kata pemicu Mobius, tombol rekam, dan tab assistant tidak diperlukan.
+
+- Microphone: local faster-whisper, adaptive audio gate, 0.8s pre-roll, 0.7s pause before transcription. Default profile is high. Set MOBIUS_MIC_SENSITIVITY=normal or low to reduce false triggers.
+- Voice routing: accepts informal Indonesian verbs and normalizes phrases like 'di browser' so they are not included in Google search terms.
+- Local English TTS: Windows SAPI speaks confirmations only when an app/search/music command reports success. For example, "Okay, calculator is now open" or "Okay, I opened the browser search for recipes for nasi goreng".
+- While English TTS plays, microphone audio is ignored briefly to avoid the assistant hearing its own voice.
+- Shutdown still requires confirmation. Without a wake word, audio from TV/videos may be recognized; disable the mic from system tray when you do not want hands-free listening.
+- AI via Ollama remains optional for unsupported phrases. Web search still requires Internet to load results.
+
+### Update an existing Git clone (no re-download of models)
+
+1. Quit the previous Mobius instance from its system tray icon.
+2. Open PowerShell and run:
+
+```powershell
+cd "$HOME\Documents\Mobius-GitHub"
+git pull --ff-only origin main
+.\run-debug-windows.bat
+```
+
+Previously downloaded Whisper models remain at %USERPROFILE%\.mobius\models. Your existing .venv does not need to be reinstalled.
+
+### Test Windows microphone
+
+```powershell
+.\.venv\Scripts\python.exe -c "import sounddevice as sd; print(sd.query_devices(kind='input'))"
+.\.venv\Scripts\python.exe -m pytest -q tests\test_voice_pipeline.py
+```
+
+Check Windows Settings > Privacy & security > Microphone, and enable microphone access for desktop apps. Select an English SAPI voice under Windows language/speech settings if English speech is unavailable.
+
+GitHub Actions runs mocked command tests. Actual microphone sensitivity and speaker playback must still be validated on your Windows laptop.
