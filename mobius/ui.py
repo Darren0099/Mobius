@@ -685,7 +685,7 @@ class MobiusWindow(QWidget):
         elif media.get('available') and media.get('status') == 'playing':
             if self.quick.lyrics:
                 from .lyrics import active_line
-                idx = active_line(self.quick.lyrics, media.get('position', 0))
+                idx = active_line(self.quick.lyrics, self.quick.estimated_position())
                 if 0 <= idx < len(self.quick.lyrics):
                     line = self.quick.lyrics[idx][1]
             if not line:
