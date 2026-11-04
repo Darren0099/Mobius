@@ -76,6 +76,35 @@ def parse_command(text: str) -> Intent:
         if not 1 <= seconds <= 86400:
             return Intent('error', 'Waktu shutdown harus 1 detik sampai 24 jam.')
         return Intent('shutdown', f'Jadwalkan shutdown dalam {n} {match.group(2)}?', {'seconds': seconds}, True)
+    # Voice controls for the ambient island; no privileged shell access.
+    if re.search(r'^(?:tampilkan|lihat|show|buka)\s+(?:lirik|lyrics)\b', s):
+        return Intent('quick', 'Open synchronized lyrics panel', {'page': 'lyrics'})
+    if re.search(r'^(?:mulai|start|aktifkan|jalankan)\s+(?:fokus|focus|pomodoro)\b', s):
+        m = re.search(r'(\d{1,3})\s*(?:menit|minutes?)', s)
+        duration = int(m.group(1)) if m else None
+        if duration is not None and not 5 <= duration <= 120:
+            return Intent('error', 'Focus duration must be 5–120 minutes')
+        return Intent('focus', 'Start focus timer', {'action': 'start', 'minutes': duration})
+    if re.search(r'^(?:pause|jeda|hentikan|stop)\s+(?:fokus|focus|pomodoro|timer)\b', s):
+        return Intent('focus', 'Pause focus timer', {'action': 'pause'})
+    if re.search(r'^(?:reset|ulang|atur ulang)\s+(?:fokus|focus|pomodoro|timer)\b', s):
+        return Intent('focus', 'Reset focus timer', {'action': 'reset'})
+    if re.search(r'^(?:catat|minum|tambah)\s+(?:(?:aku|saya)\s+)?(?:minum|air\s+)?', s) and re.search(r'\b(?:air|ml|mili|gelas|botol)\b', s):
+        m = re.search(r'(\d{2,4})\s*(?:ml|mili)', s)
+        amount = int(m.group(1)) if m else None
+        if amount is not None and not 1 <= amount <= 5000:
+            return Intent('error', 'Water amount must be 1–5000 ml')
+        return Intent('water', 'Log drinking water', {'ml': amount})
+    if re.search(r'^(?:pause|jeda|stop|hentikan)\s+(?:musik|lagu|music|pemutar)\b', s):
+        return Intent('media', 'Pause music', {'action': 'pause'})
+    if re.search(r'^(?:lanjutkan|lanjut|resume|play)\s+(?:musik|lagu|music)\b', s):
+        return Intent('media', 'Resume music', {'action': 'play'})
+    if re.search(r'^(?:skip|next|lewati|putar)\s+(?:lagu\s+)?(?:berikutnya|selanjutnya|next)\b', s):
+        return Intent('media', 'Next track', {'action': 'next'})
+    if re.search(r'^(?:previous|sebelumnya|kembali)\s+(?:lagu|musik|track)\b', s):
+        return Intent('media', 'Previous track', {'action': 'previous'})
+    if re.search(r'^(?:putar|play)\s+(?:musik|lagu|music)\b', s) and not re.search(r'\bacak\b', s):
+        return Intent('media', 'Play current media', {'action': 'play'})
     if re.search(r'\b(?:putar|play|mainkan)\b.*\b(?:musik|lagu|music)\b', s):
         return Intent('music', 'Putar lagu lokal secara acak.')
     if re.search(r'\b(?:cari|carikan|cariin|search|telusuri|googling)\b', s) and not re.search(r'\b(?:file|berkas|dokumen|pdf)\b', s):
