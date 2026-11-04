@@ -32,6 +32,7 @@ from .radial_studio import RadialStudio, eligible_files
 from .carousel import IslandCarousel
 from .ambient import GlanceController, read_windows_power, clock_label
 from .theme import ORANGE, CORAL, gradient, island_glow
+from .result_reveal import reveal_results
 
 COLORS = {
     'bg': '#141414', 'tile': '#222322', 'tile_hover': '#303328', 'line': '#454941',
@@ -1169,9 +1170,18 @@ class MobiusWindow(QWidget):
 
     def _success(self, result):
         self._last_results = result
-        self._notify(f'Selesai! {len(result.files)} file tersimpan di {self.destination}', mood='happy')
+        self._notify(f'Konversi selesai. {len(result.files)} file dibuat.', mood='happy')
         if result.files:
             self.feedback.speak("Okay, your file conversion is complete.")
+            # UI-thread callback, not inside the conversion worker.
+            outputs = tuple(result.files)
+            QTimer.singleShot(250, lambda paths=outputs: self._reveal_completed_files(paths))
+
+    def _reveal_completed_files(self, paths):
+        """After a successful conversion, show the actual generated output."""
+        if not reveal_results(paths, self.destination):
+            self._notify('File selesai dibuat, tetapi lokasi hasil tidak bisa dibuka.',
+                         mood='warning')
 
     def _failure(self, msg):
         self._notify('Gagal: ' + msg[:180], mood='warning')
