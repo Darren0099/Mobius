@@ -10,7 +10,7 @@ import math
 from pathlib import Path
 
 from PySide6.QtCore import QPointF, QRectF, Qt, QTimer, Signal
-from PySide6.QtGui import QColor, QCursor, QFont, QPainter, QPainterPath, QPen, QLinearGradient
+from PySide6.QtGui import QBrush, QColor, QCursor, QFont, QPainter, QPainterPath, QPen, QLinearGradient
 from PySide6.QtWidgets import QApplication, QFileDialog, QWidget
 
 from .engine import BY_KEY, OPERATIONS, IMAGES, PDF, WORD, supported
@@ -184,7 +184,7 @@ class RadialStudio(QWidget):
                 base = QColor(PALETTE[i])
                 fill.setColorAt(0, base.lighter(112 if energy > .55 else 105))
                 fill.setColorAt(1, base.darker(110))
-                painter.setBrush(fill)
+                painter.setBrush(QBrush(fill))
                 edge = QColor("#100B0E")
                 text_color = QColor("#170E13")
             else:
