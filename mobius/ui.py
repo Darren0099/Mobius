@@ -31,14 +31,8 @@ from .robot_eyes import Eyes
 from .radial_studio import RadialStudio, eligible_files
 from .carousel import IslandCarousel
 from .ambient import GlanceController, read_windows_power, clock_label
-from .theme import ORANGE, CORAL, gradient, island_glow
+from .theme import ORANGE, CORAL
 from .result_reveal import reveal_results
-
-COLORS = {
-    'bg': '#141414', 'tile': '#222322', 'tile_hover': '#303328', 'line': '#454941',
-    'text': '#FBF8EF', 'muted': '#B8BBAE', 'sky': '#C7FF10', 'accent': '#83AF3B'
-}
-
 
 
 
