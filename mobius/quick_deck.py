@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
 )
 
 from .lyrics import active_line, load_lrc, search_lrclib
+from .vector_icons import attach
 from .chime import play_soft_chime
 from .media_bridge import MediaBridge
 from .wellness import WellnessStore
@@ -45,16 +46,18 @@ class WaterBars(QWidget):
             bar_w = width / 24 * .72
             x = 5 + h * width / 24
             size = self.bars[h] / top * height
-            p.setBrush(QColor("#4BBEFF" if self.bars[h] else "#262A33"))
+            p.setBrush(QColor("#F0F0F3" if self.bars[h] else "#2D2D33"))
             p.drawRoundedRect(int(x), int(height - size + 3), max(2, int(bar_w)),
                               max(3, int(size)), 2, 2)
         p.end()
 
 
-def button(label, callback, *, primary=False):
+def button(label, callback, *, primary=False, glyph=None):
     b = QPushButton(label)
     b.setCursor(Qt.CursorShape.PointingHandCursor)
     b.setObjectName("quickPrimary" if primary else "quickButton")
+    if glyph:
+        attach(b, glyph, size=15, color='#141416' if primary else '#FAFAFC')
     b.clicked.connect(callback)
     return b
 
@@ -92,7 +95,7 @@ class QuickDeck(QWidget):
         nav = QHBoxLayout()
         nav.setSpacing(8)
         self.nav = []
-        for index, title in enumerate(("♫  Music", "≋  Lyrics", "◴  Focus", "◉  Water")):
+        for index, title in enumerate(("Music", "Lyrics", "Focus", "Water")):
             b = button(title, lambda _=False, page=index: self.toggle_page(page))
             b.setCheckable(True)
             nav.addWidget(b)
@@ -127,8 +130,16 @@ class QuickDeck(QWidget):
         self.track.setObjectName("quickTrack")
         layout.addWidget(self.track)
         buttons = QHBoxLayout()
-        for label, action in (("⏮", "previous"), ("⏯", "toggle"), ("⏭", "next")):
-            buttons.addWidget(button(label, lambda _=False, a=action: self.media.control(a)))
+        for action, glyph, tooltip in (
+            ("previous", "previous", "Previous track"),
+            ("toggle", "play", "Play or pause"),
+            ("next", "next", "Next track"),
+        ):
+            control = button("", lambda _=False, a=action: self.media.control(a),
+                             glyph=glyph)
+            control.setToolTip(tooltip)
+            control.setFixedWidth(44)
+            buttons.addWidget(control)
         layout.addLayout(buttons)
         self.seek = QSlider(Qt.Orientation.Horizontal)
         self.seek.setRange(0, 1000)
@@ -144,8 +155,8 @@ class QuickDeck(QWidget):
         widget = QFrame()
         layout = QVBoxLayout(widget)
         controls = QHBoxLayout()
-        controls.addWidget(button("Open local .LRC", self._open_lrc))
-        controls.addWidget(button("Find lyrics online", self._find_online))
+        controls.addWidget(button("Open .LRC", self._open_lrc, glyph="folder"))
+        controls.addWidget(button("Find lyrics", self._find_online, glyph="search"))
         controls.addStretch()
         layout.addLayout(controls)
         split = QHBoxLayout()
@@ -154,7 +165,7 @@ class QuickDeck(QWidget):
         left.setObjectName("lyricLeft")
         left_layout = QVBoxLayout(left)
         left_layout.setContentsMargins(14, 10, 12, 10)
-        self.lyric_song = QLabel("♫  Waiting for music")
+        self.lyric_song = QLabel("Waiting for music")
         self.lyric_song.setObjectName("quickTrack")
         self.lyric_song.setWordWrap(True)
         left_layout.addWidget(self.lyric_song)
@@ -183,8 +194,8 @@ class QuickDeck(QWidget):
         self.focus_time.setObjectName("quickClock")
         layout.addWidget(self.focus_time, alignment=Qt.AlignmentFlag.AlignCenter)
         row = QHBoxLayout()
-        row.addWidget(button("Start / Pause", self._toggle_focus, primary=True))
-        row.addWidget(button("Reset", self._reset_focus))
+        row.addWidget(button("Start / Pause", self._toggle_focus, primary=True, glyph="play"))
+        row.addWidget(button("Reset", self._reset_focus, glyph="reset"))
         row.addStretch()
         row.addWidget(QLabel("Focus"))
         self.focus_minutes = QSpinBox()
@@ -212,7 +223,7 @@ class QuickDeck(QWidget):
         self.water_progress.setTextVisible(True)
         layout.addWidget(self.water_progress)
         row = QHBoxLayout()
-        row.addWidget(button("+ Drink bottle", self._drink, primary=True))
+        row.addWidget(button("Add water", self._drink, primary=True, glyph="water"))
         row.addWidget(QLabel("Bottle (ml)"))
         self.bottle_size = QSpinBox()
         self.bottle_size.setRange(50, 1500)
@@ -270,8 +281,8 @@ class QuickDeck(QWidget):
             return
         title = current.get("title") or "Unknown track"
         artist = current.get("artist") or "Unknown artist"
-        self.track.setText(f"♫  {title}  —  {artist}")
-        self.lyric_song.setText(f"♫  {title} — {artist}")
+        self.track.setText(f"{title} — {artist}")
+        self.lyric_song.setText(f"{title} — {artist}")
         self.seek.setEnabled(current.get("can_seek", False))
         if not self.seek.isSliderDown() and current.get("duration", 0) > 0:
             self.seek.setValue(int(min(1.0, current.get("position", 0) /
