@@ -31,6 +31,7 @@ from .robot_eyes import Eyes
 from .radial_studio import RadialStudio, eligible_files
 from .carousel import IslandCarousel
 from .ambient import GlanceController, read_windows_power, clock_label
+from .theme import ORANGE, CORAL, gradient, island_glow
 
 COLORS = {
     'bg': '#141414', 'tile': '#222322', 'tile_hover': '#303328', 'line': '#454941',
@@ -193,7 +194,7 @@ class InterpretWorker(QObject):
 
 class MobiusWindow(QWidget):
     """Unified always-listening assistant and drag-drop file tool island."""
-    TIP_W, TIP_H = 134, 18   # invisible hit area, 58x5 visual line
+    TIP_W, TIP_H = 96, 14  # 34x4 black tip; a larger invisible drop target
     COMPACT_W, COMPACT_H = 124, 38
     OPEN_W, OPEN_H = 408, 255  # small floating island; conversion tools scroll internally
 
@@ -376,10 +377,10 @@ class MobiusWindow(QWidget):
 
         self.carousel = IslandCarousel(self.panel)
         self.feature_pages = (
-            ("Music", "#FAFAFC"),
-            ("Lyrics", "#FAFAFC"),
-            ("Focus Timer", "#FAFAFC"),
-            ("Water Reminder", "#FAFAFC"),
+            ("Music", ORANGE),
+            ("Lyrics", CORAL),
+            ("Focus Timer", ORANGE),
+            ("Water Reminder", CORAL),
         )
         for (label, accent), height in zip(self.feature_pages, (145, 198, 158, 230)):
             page = self.quick.pages.widget(0)
@@ -387,9 +388,9 @@ class MobiusWindow(QWidget):
                 raise RuntimeError("Quick feature widget is missing")
             self.quick.pages.removeWidget(page)
             self.carousel.add_page(page, label, accent, content_height=height)
-        self.carousel.add_page(self.file_page, "File Studio", "#FAFAFC",
+        self.carousel.add_page(self.file_page, "File Studio", ORANGE,
                                content_height=238)
-        self.carousel.add_page(self.assistant_page, "Assistant", "#FAFAFC",
+        self.carousel.add_page(self.assistant_page, "Assistant", CORAL,
                                content_height=186)
         self.carousel.page_changed.connect(self._page_selected)
         panel_layout.addWidget(self.carousel)
@@ -628,33 +629,42 @@ class MobiusWindow(QWidget):
         super().resizeEvent(event)
 
     def paintEvent(self, event):
-        """Seamless graphite island: no neon glow or visible gradient band."""
+        """A black camera notch with a subtle orange-to-red sunset backlight."""
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         w, h = self.width(), self.height()
         if self._tip_mode:
-            # Clear, unobtrusive line over bright or dark wallpapers.
             p.setPen(Qt.PenStyle.NoPen)
-            p.setBrush(QColor("#0A0A0E"))
-            p.drawRoundedRect(QRect((w - 72) // 2, 0, 72, 11), 5, 5)
-            p.setBrush(QColor("#F4F4F7"))
-            p.drawRoundedRect(QRect((w - 50) // 2, 3, 50, 4), 2, 2)
+            p.setBrush(QColor("#050506"))
+            p.drawRoundedRect(QRect((w - 34) // 2, 1, 34, 4), 2, 2)
             p.end()
             return
-        radius = min(20 if self._expanded else 17, max(2, h // 2))
+        r = min(22 if self._expanded else 17, max(2, h // 2))
         shape = QPainterPath()
         shape.moveTo(0, 0)
         shape.lineTo(w, 0)
-        shape.lineTo(w, h-radius)
-        shape.quadTo(w, h, w-radius, h)
-        shape.lineTo(radius, h)
-        shape.quadTo(0, h, 0, h-radius)
+        shape.lineTo(w, h-r)
+        shape.quadTo(w, h, w-r, h)
+        shape.lineTo(r, h)
+        shape.quadTo(0, h, 0, h-r)
         shape.closeSubpath()
-        grad = QLinearGradient(0, 0, 0, h)
-        grad.setColorAt(0, QColor("#050507"))
-        grad.setColorAt(1, QColor("#111114"))
-        p.fillPath(shape, QBrush(grad))
-        p.setPen(QPen(QColor(255, 255, 255, 15), 1))
+        p.save()
+        p.setClipPath(shape)
+        p.fillPath(shape, QColor("#050507"))
+        # Horizontal spectrum: orange at left, warm red at right.
+        p.fillRect(QRect(0, max(0, h-35), w, min(h, 35)),
+                   gradient(0, 0, w, 0))
+        # Black above, transparent at bottom, for a smooth fade.
+        fade = QLinearGradient(0, max(0, h-38), 0, h)
+        fade.setColorAt(0, QColor("#050507"))
+        fade.setColorAt(.44, QColor("#050507"))
+        fade.setColorAt(1, QColor(5, 5, 7, 0))
+        p.fillRect(QRect(0, max(0, h-39), w, min(h, 39)), fade)
+        p.fillRect(QRect(0, max(0, h-23), w, min(h, 23)),
+                   island_glow(w * .5, h+3, max(100, w * .62)))
+        p.restore()
+        p.setPen(QPen(QColor(255, 255, 255, 16), 1))
+        p.setBrush(Qt.BrushStyle.NoBrush)
         p.drawPath(shape)
         p.end()
 
