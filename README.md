@@ -1,5 +1,18 @@
 # MOBIUS — Sunset Island (source development)
 
+## Current revision — seamless gradient, unfolding File Studio, Explorer reveal
+
+The current source in `main` supersedes the older ZIP/patch instructions below.
+
+- The island now uses a **single continuous vertical warm-black gradient**, with a translucent orange glow blended into it. There is no separate colored rectangle beneath the black area.
+- File Studio uses a **staggered Chinese folding-fan unfold**: one small radial petal appears first, then the remaining eight open clockwise over roughly 0.6 seconds. Only compatible conversion tools are orange; disabled options are graphite gray. Hovering an eligible sector smoothly lifts it out by up to 16 logical pixels.
+- The radial palette keeps the existing **nine offline conversion operations**, original drag-and-drop workflow, and a separate central file picker.
+- **After each successful conversion**, a single output file is automatically selected in Windows File Explorer; multiple outputs open their containing directory. This happens only on success and only for output paths that actually exist. If Explorer cannot open, the app displays a warning.
+- Compact Music, Focus, Water and Lyrics cards use a restrained orange accent, white typography and charcoal surfaces. Focus and Water progress indicators use small radial-repeat tick marks.
+- The black 34×4 logical-pixel foreground tip and automatic expressive-eye display on the desktop remain unchanged.
+- **No EXE or installer build has been requested or triggered.** These revisions are for the GitHub source. Use `git pull --ff-only origin main` and `.\\run-windows.bat`.
+
+
 **Mobius** adalah asisten Windows 10/11 yang mendengarkan perintah setelah startup dan menyatukan konversi dokumen serta asisten suara dalam **satu layar**. Mata robot putih terlihat saat desktop aktif; ketika browser atau aplikasi lain terbuka, Mobius menyisakan garis tipis di tengah tepi atas yang menjadi target drag-and-drop. File Studio tampil sebagai menu radial terpisah di tengah layar. Tidak ada layanan cloud yang menerima rekaman suara atau file.
 
 ## Instalasi dari GitHub (Windows PowerShell)
