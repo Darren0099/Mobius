@@ -701,10 +701,8 @@ class MobiusWindow(QWidget):
     def set_show_over_apps(self, enabled):
         """Optional compact overlay; never force-enable it on startup."""
         self._show_over_apps = bool(enabled)
-        if self._show_over_apps:
-            self.show()
-        else:
-            self._sync_desktop_visibility()
+        # Apply the current foreground policy immediately.
+        self._sync_desktop_visibility()
 
     def _show_context_menu(self, pos):
         menu = QMenu(self)
