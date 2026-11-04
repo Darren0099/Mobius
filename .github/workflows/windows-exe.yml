@@ -1,4 +1,4 @@
-# Mobius v0.7 full-feature build: source snapshot November 4, 2026
+# Lean packaging: only Qt Essentials; excludes unused WebEngine/PDF widgets.
 name: Build Mobius Windows EXE
 
 on:
@@ -39,7 +39,7 @@ jobs:
           python -m PyInstaller --noconfirm --clean --onefile --windowed
           --name Mobius --icon assets/mobius.ico
           --add-data "assets/mobius.ico;assets"
-          --collect-all pdf2docx --collect-all pymupdf
+          --exclude-module PySide6.QtWebEngineWidgets --exclude-module PySide6.QtWebEngineCore --exclude-module PySide6.QtPdfWidgets --collect-all pdf2docx --collect-all pymupdf
           --collect-all faster_whisper --collect-all ctranslate2
           --hidden-import sounddevice --hidden-import win32com.client
           --hidden-import winrt.windows.media.control app.py
