@@ -362,7 +362,7 @@ class QuickDeck(QWidget):
             self.lyric_live.setText("Select a synchronized lyric source")
             return
         idx = active_line(self.lyrics, self.estimated_position())
-        self.lyric_live.setText(self.lyrics[idx][1] if idx >= 0 else "♪  …")
+        self.lyric_live.setText(self.lyrics[idx][1] if idx >= 0 else "Waiting for next line")
         if 0 <= idx < self.lyric_list.count() and self.lyric_list.currentRow() != idx:
             self.lyric_list.setCurrentRow(idx)
             self.lyric_list.scrollToItem(self.lyric_list.item(idx))
