@@ -1,4 +1,4 @@
-# MOBIUS v0.6 · Ambient Offline Assistant + File Studio
+# MOBIUS v0.7 · Living Island, Offline Assistant + File Studio
 
 **Mobius** adalah asisten Windows 10/11 yang mendengarkan perintah setelah startup dan menyatukan konversi dokumen serta asisten suara dalam **satu layar**. Bar kecil berwarna lime hanya terlihat saat desktop kosong/aktif. Saat browser atau aplikasi lain sedang aktif, bar disembunyikan, tetapi pendengar suara tetap berjalan. Tidak ada layanan cloud yang menerima rekaman suara atau file.
 
@@ -170,3 +170,63 @@ GitHub Actions runs mocked command tests. Actual microphone sensitivity and spea
 ### Tes mikrofon mandiri v0.6
 
 Jalankan `./test-voice-windows.bat` dari folder repository GitHub. Script akan merekam 5 detik untuk pengujian, menampilkan RMS serta transkrip Whisper, mendeteksi intent, lalu mencoba mengucapkan satu kalimat English melalui SAPI; **tidak mengeksekusi perintah komputer**. Jika mikrofon tidak menerima 16 kHz, aplikasi mencoba sample rate perangkat (misalnya 44,1 atau 48 kHz) dan melakukan resampling lokal ke 16 kHz. Tidak ada rekaman audio yang disimpan ke disk.
+
+## Mobius v0.7 — Living Island (November 2026)
+
+Mobius is a Windows 10/11 desktop island **inspired by the interaction concept of Nusa** (https://rama2555.github.io/nusa/) but built from Mobius's own Qt/Python implementation, artwork and lime/emerald visual identity. No Nusa code or graphic assets are copied.
+
+### Appearance and navigation
+
+- Compact island attaches flush to the TOP center display edge. The flat black top and rounded bottom create a notch-like silhouette; ambient glow is emerald/green with electric lime highlights. Windows overlays cannot physically alter the laptop camera/bezel.
+- Robot eyes follow cursor movement and change expressions (open, blink, focus, wink, squint, uneven eyes, W-shaped smile, drooping and sleepy). After around 95 seconds of idle, eyes get drowsy; after ~5 minutes, they doze. They wake when cursor motion resumes.
+- When music plays, the compact notch extends to show a track title or (if loaded) active lyric line. While Pomodoro runs, it shows its countdown. Otherwise it displays just expressive eyes.
+- Click the island or use Ctrl+Alt+M to open the integrated File Studio and four QUICK buttons: Music, Lyrics, Focus, Water. Choose a QUICK button again to hide that detail. File Studio remains on the same screen.
+- As before, the island hides when another app is active unless pinned via the Mobius tray. Hover the top-center display edge for a temporary reveal.
+
+### Music — Windows media sessions
+
+Music controls use Windows **Global System Media Transport Controls** (GSMTC), not Spotify API or browser scraping. Spotify, Apple Music, YouTube in Chrome/Edge/Firefox and other players can work **only when their player/session exposes Windows system media controls**. Play/pause, previous/next and seek are available when supported by that player. No music account credentials are needed.
+
+Install media support ONCE after cloning:
+
+```powershell
+cd "$HOME\Documents\Mobius-GitHub"
+.\install-media-windows.bat
+```
+
+Voice examples: 'pause musik', 'lanjutkan lagu', 'skip lagu berikutnya'. Music controls will report that no player is available when Windows has no session.
+
+### Synced lyrics
+
+- Click **Lyrics → Open local .LRC** for offline time-coded lyrics next to your track; select a line to seek if your media player supports seeking.
+- Click **Lyrics → Find lyrics online** to explicitly look up the playing track on **LRCLIB**. That action sends the track title, artist, and approximate length (song metadata only) to LRCLIB. No account or microphone audio is sent. This feature needs internet. Some tracks lack synced lyrics.
+- No copyrighted lyrics are bundled into Mobius. Only user-selected files or responses returned through LRCLIB are displayed.
+
+### Focus timer (Pomodoro)
+
+- Adjustable focus (5–120 min) and break (1–45 min) durations; Start/Pause/Reset and live countdown in the island.
+- Original gentle local WAV chime at session transitions. Completed-session count is stored locally; running sessions are intentionally paused after a restart.
+- Voice examples: 'mulai fokus 25 menit', 'pause pomodoro', 'reset timer'.
+
+### Water reminders
+
+- Set bottle size and daily intake goal. Click '+ Drink bottle' or say 'catat minum 250 ml'.
+- Hourly intake bars, progress indicator, configurable reminder hours and interval (default 09:00–20:00, every 60 min).
+- Saved only at `%USERPROFILE%\.mobius\wellness.json`; resets the daily tally on a new calendar day. No online accounts.
+
+### Install or build on Windows
+
+**Existing Git clone:**
+
+```powershell
+cd "$HOME\Documents\Mobius-GitHub"
+git pull --ff-only origin main
+.\install-media-windows.bat
+.\run-debug-windows.bat
+```
+
+Whisper/AI models already downloaded remain in the user cache and do not need reinstallation. Voice setup for fresh source installs remains `install-voice-windows.bat`; the local Ollama Qwen model remains optional.
+
+**Standalone EXE:** Run `build-windows.bat` on Windows, or open GitHub Actions → **Build Mobius Windows EXE** → Run workflow and download the EXE artifact after a successful run. `Mobius.iss` optionally builds a per-user Inno Setup installer when the compiler is available. The EXE bundles Python libraries but NOT the Whisper/Qwen model weights; those require a one-time local setup/download.
+
+**Tests:** The GitHub Actions Windows regression workflow runs `pytest -q tests`. Checks include text/voice intent simulations, offline LRC parsing, music bridge helpers, focus transitions, water settings persistence, and Qt quick-deck startup. Music session compatibility, mic/audio playback, and packaging still need testing on the user's actual Windows laptop.
