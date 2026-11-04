@@ -21,7 +21,7 @@ from PySide6.QtWidgets import (
 from .lyrics import active_line, load_lrc, search_lrclib
 from .vector_icons import attach, icon
 from .arc_meter import ArcMeter
-from .theme import ORANGE, CORAL
+from .theme import ORANGE
 from .chime import play_soft_chime
 from .media_bridge import MediaBridge
 from .wellness import WellnessStore
@@ -49,7 +49,7 @@ class WaterBars(QWidget):
             bar_w = width / 24 * .72
             x = 5 + h * width / 24
             size = self.bars[h] / top * height
-            p.setBrush(QColor(CORAL if self.bars[h] else "#34323A"))
+            p.setBrush(QColor(ORANGE if self.bars[h] else "#34323A"))
             p.drawRoundedRect(int(x), int(height - size + 3), max(2, int(bar_w)),
                               max(3, int(size)), 2, 2)
         p.end()
