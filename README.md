@@ -1,6 +1,6 @@
 # MOBIUS v0.8 · Dark Carousel Island, Offline Assistant + File Studio
 
-**Mobius** adalah asisten Windows 10/11 yang mendengarkan perintah setelah startup dan menyatukan konversi dokumen serta asisten suara dalam **satu layar**. Bar kecil berwarna lime hanya terlihat saat desktop kosong/aktif. Saat browser atau aplikasi lain sedang aktif, bar disembunyikan, tetapi pendengar suara tetap berjalan. Tidak ada layanan cloud yang menerima rekaman suara atau file.
+**Mobius** adalah asisten Windows 10/11 yang mendengarkan perintah setelah startup dan menyatukan konversi dokumen serta asisten suara dalam **satu layar**. Mata robot putih terlihat saat desktop aktif; ketika browser atau aplikasi lain terbuka, Mobius menyisakan garis tipis di tengah tepi atas yang menjadi target drag-and-drop. File Studio tampil sebagai menu radial terpisah di tengah layar. Tidak ada layanan cloud yang menerima rekaman suara atau file.
 
 ## Instalasi dari GitHub (Windows PowerShell)
 
@@ -346,3 +346,25 @@ git pull --ff-only origin main
 ```
 
 To diagnose window creation separately, use `.\run-debug-windows.bat`. Normal visibility behavior is best tested with `run-windows.bat` because debug intentionally expands the panel initially.
+
+## Source revision — persistent file-drop tip and radial File Studio (no EXE build)
+
+**Important: the installer/EXE build remains paused until the owner explicitly says Mobius is final.** Only source and Windows tests are being updated.
+
+### Opening File Studio from another app
+
+- With Chrome, VS Code or Explorer in front, a slim **white 50×4-pixel line** remains inside a 134×18 logical-pixel drag/drop hit area in the top-center screen edge. The tiny dark backdrop makes the line visible over light wallpaper.
+- Drag a local PDF, Word DOC/DOCX or supported image to the top line. **The 9-sector radial wheel appears centered on screen while the eye island stays at the top.** Drop on a valid sector to convert, or drop on the top line and click the desired sector afterward.
+- Alternatively click the top indicator or use the tray menu **Buka File Studio radial**. Click the center circle to choose files without dragging.
+- Petals follow the supplied radial infographic references, with graphite shell, pale neutral segments and understated hover. **Disabled gray sectors** indicate actions incompatible with the selected file(s). Merge PDF requires at least two PDFs.
+- Supported operations: Image to PDF, PDF to Image, Word to PDF, PDF to Word, Merge PDF, Split PDF, Compress PDF, Rotate PDF, and Image Format. Conversions use the existing local processing engine.
+- Click outside the wheel or press **Esc** to dismiss. The compact eye island and other-feature carousel remain separate.
+- Robot eyes use antialiased **almond eyelids, dark movable pupils, softened blink, smiles, squints, concern, focus, and sleep**; no emoji or downloaded artwork.
+
+### Test the current Git source (do not run build-windows.bat)
+
+    cd "$HOME\Documents\Mobius-GitHub"
+    git pull --ff-only origin main
+    .\run-windows.bat
+
+Test by dragging a file from Explorer onto the top-center stripe while Chrome is active. Only file-compatible sectors should respond. Avoid running Mobius elevated: Windows may block dropping files from Explorer into administrator-level apps.
