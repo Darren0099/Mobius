@@ -97,13 +97,15 @@ class MediaBridge(QObject):
             if not reading:
                 self.error.emit("Media controls require Windows 10/11")
             return
-        if self._busy:
+        if reading and self._busy:
             return
-        self._busy = True
+        if reading:
+            self._busy = True
         future = self._pool.submit(asyncio.run, coro)
 
         def finished(f):
-            self._busy = False
+            if reading:
+                self._busy = False
             try:
                 result = f.result()
                 if reading:
