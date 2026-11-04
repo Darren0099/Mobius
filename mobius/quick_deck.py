@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
 )
 
 from .lyrics import active_line, load_lrc, search_lrclib
+from .chime import play_soft_chime
 from .media_bridge import MediaBridge
 from .wellness import WellnessStore
 
@@ -405,7 +406,7 @@ class QuickDeck(QWidget):
         focus = self.store.focus
         if focus.tick():
             self.store.save()
-            QApplication.beep()
+            play_soft_chime()
             self.alert.emit("Focus session finished. Time to switch mode.")
         self._render_focus()
         self._highlight_lyric()
