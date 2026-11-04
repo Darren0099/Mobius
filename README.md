@@ -285,3 +285,27 @@ To package as an EXE on Windows, run `.\build-windows.bat`, or download an artif
 ### Verification
 
 `tests/test_ambient_carousel.py` checks exactly ten-second glance expiry and carousel navigation. `tests/test_window_carousel_smoke.py` instantiates the actual Qt window in offscreen mode with all six feature pages, without starting microphone/media workers. Windows CI additionally runs the existing voice, PDF, hydration and lyrics tests. Real laptop interaction/rendering still needs a Windows desktop test.
+
+## v0.8.2 — Small notch + click-away + animated browser hiding (November 4, 2026)
+
+This revision directly addresses the screenshot/video feedback that v0.8's expanded panel occupied too much of the desktop.
+
+- **Smaller geometry:** compact avatar 158×42 Qt logical pixels; expanded width **540** rather than 838. Page heights now fit content instead of occupying the previous oversized canvas: Music ~232px high, Focus ~245px, Lyrics ~285px, Water ~317px and File Studio ~325px (Qt logical units, before Windows display scaling). The conversion grid is a **scrollable two-column list**, so all tools stay available even though the island is much shorter.
+- **Click-away:** while expanded, clicking anywhere outside the island's actual screen rectangle (desktop, browser, taskbar, etc.) collapses it without consuming the original click. Clicks inside keep the current carousel open. Native file dialogs and other modal popups are exempt.
+- **Smooth hide:** switching to a foreground browser or other application after collapse shrinks the compact notch toward the camera edge (approx. 235 ms) and then hides the window. No instant disappearance.
+- **Top-edge reveal:** move the pointer to the top-center ~210-pixel-wide, 6-pixel-high hover trigger for ~0.7 seconds, even while Chrome/VS Code is active. Mobius grows smoothly from a thin sliver to its compact avatar, which you can click to open the short carousel. The overlay does not steal keyboard focus on reveal.
+- Desktop-only visibility remains the default. System tray pin and Ctrl+Alt+M recovery remain available. Always-on microphone, voice commands, File Studio, music/lyrics, timer and hydration modules are unchanged.
+
+### Update from the existing Git clone
+
+Quit the existing Mobius process from the tray icon, then run:
+
+```powershell
+cd "$HOME\Documents\Mobius-GitHub"
+git pull --ff-only origin main
+.\run-debug-windows.bat
+```
+
+Debug mode forces the expanded panel to remain above PowerShell so you can validate the smaller layout before normal use. Once verified, quit the debug instance from the tray and use `.\run-windows.bat` for desktop-only mode. Your existing `.venv`, Whisper cache and Ollama models are not deleted.
+
+Run automated tests with `.\.venv\Scripts\python.exe -m pytest -q tests` if pytest is installed. Real-world mouse timings, DPI scaling, and visual animations must also be checked on a Windows desktop.
