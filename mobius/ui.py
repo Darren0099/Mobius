@@ -69,7 +69,8 @@ class DropHeader(QFrame):
         self.app._drag_enter(event)
 
     def dragMoveEvent(self, event):
-        self.app._drag_enter(event)
+        # Do not re-open or raise the radial window on every pixel of a drag.
+        self.app.dragMoveEvent(event)
 
     def dropEvent(self, event):
         self.app._drop(event, None)
