@@ -148,12 +148,28 @@ class QuickDeck(QWidget):
         controls.addWidget(button("Find lyrics online", self._find_online))
         controls.addStretch()
         layout.addLayout(controls)
+        split = QHBoxLayout()
+        split.setSpacing(12)
+        left = QFrame()
+        left.setObjectName("lyricLeft")
+        left_layout = QVBoxLayout(left)
+        left_layout.setContentsMargins(14, 10, 12, 10)
+        self.lyric_song = QLabel("♫  Waiting for music")
+        self.lyric_song.setObjectName("quickTrack")
+        self.lyric_song.setWordWrap(True)
+        left_layout.addWidget(self.lyric_song)
+        self.lyric_live = QLabel("Synced line will appear here")
+        self.lyric_live.setObjectName("lyricLive")
+        self.lyric_live.setWordWrap(True)
+        left_layout.addWidget(self.lyric_live, 1)
+        split.addWidget(left, 2)
         self.lyric_list = QListWidget()
         self.lyric_list.setObjectName("quickLyrics")
         self.lyric_list.setMinimumHeight(95)
         self.lyric_list.setMaximumHeight(140)
         self.lyric_list.itemClicked.connect(self._lyric_clicked)
-        layout.addWidget(self.lyric_list)
+        split.addWidget(self.lyric_list, 3)
+        layout.addLayout(split)
         self.lyric_hint = QLabel("Timed .lrc works offline · online lookup sends song metadata only")
         self.lyric_hint.setWordWrap(True)
         self.lyric_hint.setObjectName("quickHint")
@@ -255,6 +271,7 @@ class QuickDeck(QWidget):
         title = current.get("title") or "Unknown track"
         artist = current.get("artist") or "Unknown artist"
         self.track.setText(f"♫  {title}  —  {artist}")
+        self.lyric_song.setText(f"♫  {title} — {artist}")
         self.seek.setEnabled(current.get("can_seek", False))
         if not self.seek.isSliderDown() and current.get("duration", 0) > 0:
             self.seek.setValue(int(min(1.0, current.get("position", 0) /
@@ -331,8 +348,10 @@ class QuickDeck(QWidget):
 
     def _highlight_lyric(self):
         if not self.lyrics:
+            self.lyric_live.setText("Select a synchronized lyric source")
             return
         idx = active_line(self.lyrics, self.estimated_position())
+        self.lyric_live.setText(self.lyrics[idx][1] if idx >= 0 else "♪  …")
         if 0 <= idx < self.lyric_list.count() and self.lyric_list.currentRow() != idx:
             self.lyric_list.setCurrentRow(idx)
             self.lyric_list.scrollToItem(self.lyric_list.item(idx))
