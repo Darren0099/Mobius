@@ -209,7 +209,7 @@ class MobiusWindow(QWidget):
         self._expanded = False
         self._busy = False
         self._drag_active = False
-        self._temporary_until = time.monotonic() + 0.8  # do not cover browser tabs on launch
+        self._temporary_until = 0.0  # foreground apps start with a tiny black tip, never the full island
         self._drag_armed_at = None
         self._mouse_press_start = None
         self._voice_failed = False
