@@ -9,7 +9,6 @@ from PySide6.QtCore import QPointF, QRectF, Qt, QTimer
 from PySide6.QtGui import QColor, QBrush, QPainter, QPen
 from PySide6.QtWidgets import QWidget
 
-from .theme import ORANGE
 from .vector_icons import icon
 
 
