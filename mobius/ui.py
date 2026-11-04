@@ -453,19 +453,19 @@ class MobiusWindow(QWidget):
         #carouselIndex { color: #B7B7BD; font-size: 10px; font-weight: 550; }
         #islandStatus { color: #FAFAFC; font-size: 12px; font-weight: 650; }
         #quickTrack { color: #FBFBFD; font-size: 12px; font-weight: 650; }
-        #musicCover { background: #372027; border: 1px solid #6F3C38; border-radius: 12px; }
+        #musicCover { background: #252023; border: 1px solid #41363B; border-radius: 12px; }
         #waterTotal { color: #FFF8F7; font-size: 19px; font-weight: 750; }
-        #quickClock { color: #FFAB73; font-size: 32px; font-weight: 750; }
+        #quickClock { color: #FFFFFF; font-size: 32px; font-weight: 750; }
         #quickHint { color: #ABABB2; font-size: 10px; }
         #lyricLeft {
-            background: #20171D; border: 1px solid #543039; border-radius: 11px;
+            background: #19191D; border: 1px solid #35343A; border-radius: 11px;
         }
-        #lyricLive { color: #FFAB7A; font-size: 12px; font-weight: 650; }
+        #lyricLive { color: #FF9B51; font-size: 12px; font-weight: 650; }
         #quickLyrics {
             background: #101013; color: #FAFAFC; border: 1px solid #29292E;
             border-radius: 9px;
         }
-        #quickLyrics::item:selected { background: #5F3434; color: #FFF6F4; }
+        #quickLyrics::item:selected { background: #4D3328; color: #FFFFFF; }
         #quickButton, #secondaryButton {
             background: #202024; color: #F5F5F7; border: 1px solid #343439;
             border-radius: 9px;
@@ -474,8 +474,8 @@ class MobiusWindow(QWidget):
             background: #313135; border-color: #53535A;
         }
         #quickPrimary, #primaryButton {
-            background: qlineargradient(x1:0,y1:0,x2:1,y2:0,stop:0 #FF963E,stop:0.52 #FF6841,stop:1 #ED3950);
-            color: #151114; border: 1px solid #F46A43;
+            background: #FF812F;
+            color: #151114; border: 1px solid #EA762F;
             border-radius: 9px; font-weight: 700;
         }
         #quickPrimary:hover, #primaryButton:hover { background: #FFAE68; }
@@ -483,7 +483,7 @@ class MobiusWindow(QWidget):
             background: #1D1D21; color: #FFFFFF; border: 1px solid #333338;
             border-radius: 7px; text-align: center;
         }
-        QProgressBar::chunk { background: qlineargradient(x1:0,y1:0,x2:1,y2:0,stop:0 #FF963E,stop:1 #ED3950); border-radius: 7px; }
+        QProgressBar::chunk { background: #FF812F; border-radius: 7px; }
         #sectionLabel { color: #DADAE0; font-size: 10px; font-weight: 650; }
         #assistantTitle { color: #FCFCFD; font-size: 15px; font-weight: 700; }
         #assistantStatus { color: #D6D6DC; font-size: 10px; font-weight: 550; }
@@ -499,7 +499,7 @@ class MobiusWindow(QWidget):
             background: #17171A; border: 1px solid #2C2C32; border-radius: 9px;
         }
         #toolTile:hover, #toolTile[selected='true'] {
-            background: #332428; border: 1px solid #FF8748;
+            background: #292429; border: 1px solid #F78235;
         }
         #toolTile[available='false'] { background: #111114; border-color: #242429; }
         #toolTile[available='false'] QLabel { color: #777780; }
