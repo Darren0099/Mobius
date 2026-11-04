@@ -441,28 +441,30 @@ class MobiusWindow(QWidget):
             background: transparent; border: none;
         }
         #carouselViewport {
-            background: #0C0C0F; border: 1px solid #242428; border-radius: 13px;
+            background: #121116; border: 1px solid #3A2B30; border-radius: 13px;
         }
         #carouselArrow {
             background: #19191D; border: 1px solid #2B2B30; border-radius: 10px;
             color: #FAFAFC; font-size: 16px;
         }
-        #carouselArrow:hover { background: #29292D; border-color: #4D4D52; }
+        #carouselArrow:hover { background: #3D282B; border-color: #F47B45; }
         #carouselArrow:disabled { background: #121215; color: #5A5A62; }
         #carouselIndex { color: #B7B7BD; font-size: 10px; font-weight: 550; }
         #islandStatus { color: #FAFAFC; font-size: 12px; font-weight: 650; }
         #quickTrack { color: #FBFBFD; font-size: 12px; font-weight: 650; }
-        #quickClock { color: #FFFFFF; font-size: 33px; font-weight: 700; }
+        #musicCover { background: #372027; border: 1px solid #6F3C38; border-radius: 12px; }
+        #waterTotal { color: #FFF8F7; font-size: 19px; font-weight: 750; }
+        #quickClock { color: #FFAB73; font-size: 32px; font-weight: 750; }
         #quickHint { color: #ABABB2; font-size: 10px; }
         #lyricLeft {
-            background: #141418; border: 1px solid #303035; border-radius: 11px;
+            background: #20171D; border: 1px solid #543039; border-radius: 11px;
         }
-        #lyricLive { color: #FFFFFF; font-size: 12px; font-weight: 600; }
+        #lyricLive { color: #FFAB7A; font-size: 12px; font-weight: 650; }
         #quickLyrics {
             background: #101013; color: #FAFAFC; border: 1px solid #29292E;
             border-radius: 9px;
         }
-        #quickLyrics::item:selected { background: #35353C; color: #FFFFFF; }
+        #quickLyrics::item:selected { background: #5F3434; color: #FFF6F4; }
         #quickButton, #secondaryButton {
             background: #202024; color: #F5F5F7; border: 1px solid #343439;
             border-radius: 9px;
@@ -471,15 +473,16 @@ class MobiusWindow(QWidget):
             background: #313135; border-color: #53535A;
         }
         #quickPrimary, #primaryButton {
-            background: #F5F5F7; color: #111114; border: 1px solid #F5F5F7;
-            border-radius: 9px; font-weight: 650;
+            background: qlineargradient(x1:0,y1:0,x2:1,y2:0,stop:0 #FF963E,stop:0.52 #FF6841,stop:1 #ED3950);
+            color: #151114; border: 1px solid #F46A43;
+            border-radius: 9px; font-weight: 700;
         }
-        #quickPrimary:hover, #primaryButton:hover { background: #E2E2E6; }
+        #quickPrimary:hover, #primaryButton:hover { background: #FFAE68; }
         QProgressBar {
             background: #1D1D21; color: #FFFFFF; border: 1px solid #333338;
             border-radius: 7px; text-align: center;
         }
-        QProgressBar::chunk { background: #F6F6F8; border-radius: 7px; }
+        QProgressBar::chunk { background: qlineargradient(x1:0,y1:0,x2:1,y2:0,stop:0 #FF963E,stop:1 #ED3950); border-radius: 7px; }
         #sectionLabel { color: #DADAE0; font-size: 10px; font-weight: 650; }
         #assistantTitle { color: #FCFCFD; font-size: 15px; font-weight: 700; }
         #assistantStatus { color: #D6D6DC; font-size: 10px; font-weight: 550; }
@@ -495,7 +498,7 @@ class MobiusWindow(QWidget):
             background: #17171A; border: 1px solid #2C2C32; border-radius: 9px;
         }
         #toolTile:hover, #toolTile[selected='true'] {
-            background: #27272D; border: 1px solid #BDBDC5;
+            background: #332428; border: 1px solid #FF8748;
         }
         #toolTile[available='false'] { background: #111114; border-color: #242429; }
         #toolTile[available='false'] QLabel { color: #777780; }
@@ -514,7 +517,7 @@ class MobiusWindow(QWidget):
             background: #34343B; border: none; height: 3px; border-radius: 1px;
         }
         QSlider::handle:horizontal {
-            background: #F7F7F9; width: 10px; margin: -4px 0; border-radius: 5px;
+            background: #FF8748; width: 10px; margin: -4px 0; border-radius: 5px;
         }
         QPushButton {
             font-family: 'Segoe UI Variable', 'Segoe UI';
