@@ -1,5 +1,15 @@
 MOBIUS SOURCE — SUNSET ISLAND (Windows 10/11)
 
+LATEST SOURCE NOTES
+- Quit the old Mobius instance in the system tray before updating.
+- Normal desktop behavior: run-windows.bat. Debug mode is for investigating startup issues.
+- Conversion success now opens Explorer and selects a single result, or opens
+  the result folder if multiple files were created.
+- Radial File Studio unfolds sequentially like a Chinese fan.
+- Eligible sectors use a single orange family; unavailable ones remain gray.
+- The island's black-to-orange glow is continuously blended.
+- DO NOT build Windows EXE/installer until the owner explicitly says it is fixed.
+
 A. PULL THE UPDATE
 1. Quit the older Mobius instance using its system-tray icon.
 2. Open PowerShell:
