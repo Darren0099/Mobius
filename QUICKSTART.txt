@@ -1,15 +1,24 @@
-MOBIUS - OFFLINE WINDOWS DESKTOP ASSISTANT
+MOBIUS v0.6 — OFFLINE WINDOWS ASSISTANT
 
-1. Instal Python 3.11 / 3.12 beserta py launcher.
-2. Jalankan run-windows.bat (setup sekali butuh internet).
-3. Untuk bicara bahasa Indonesia, jalankan install-voice-windows.bat (sekali butuh internet).
-4. Drag file ke bar di tengah atas; pilih salah satu dari 9 tools.
-5. Buka tab MOBIUS ASSISTANT: ketik / ucapkan (7 detik atau Hands-free ON).
-6. Katakan "Mobius buka notepad dan kalkulator".
-7. Katakan "Mobius matikan laptop dalam waktu 10 menit lagi"; pilih Yes/No untuk konfirmasi.
-8. Klik kanan ikon tray untuk keluar atau atur startup Windows.
-9. build-windows.bat membuat dist/Mobius.exe di Windows.
+1. Open PowerShell in C:\Users\user\Documents\Mobius-GitHub.
+2. Update: git pull --ff-only origin main
+3. Launch: .\run-windows.bat (or .\run-debug-windows.bat to see errors).
+4. Voice listens automatically, even if the small island is hidden.
+   Say: "buka kalkulator" — NO "Mobius" wake word needed.
+   Say: "bukain notepad dong" or "cari resep rendang di browser".
+5. Successful actions get short, OFFLINE ENGLISH spoken confirmations
+   using Windows SAPI (English system voice recommended).
+6. For microphone/Whisper/TTS diagnostic without executing commands:
+   .\test-voice-windows.bat
+7. If PySide6/Whisper already works in this Git clone, DO NOT
+   reinstall or re-download models. Whisper model cache is under
+   %USERPROFILE%\.mobius\models.
+8. Show the island: Ctrl+Alt+M or use the system tray icon.
+   The compact island stays off other apps by default.
+9. Shutdown still requires a visual Yes/No confirmation.
+10. Disable microphone in the tray when privacy or ambient-audio
+    false commands are a concern. All speech processing is local.
+11. Ollama + qwen2.5:3b remains optional for more informal questions.
+12. Use build-windows.bat if you want to build an EXE on Windows.
 
-Untuk daftar perintah, kualitas konversi, dan privasi lihat README.md.
-
-Mobius v0.3: install-ai-windows.bat untuk Qwen lokal setelah Ollama dipasang.
+More details and test instructions: README.md
