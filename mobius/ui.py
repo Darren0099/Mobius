@@ -26,6 +26,8 @@ from .hotkey import RecoveryHotkey
 from .voice_commands import should_handle_utterance, normalized_utterance
 from .voice_feedback import SpeechFeedback, english_confirmation
 from .quick_deck import QuickDeck
+from .carousel import IslandCarousel
+from .ambient import GlanceController, read_windows_power, clock_label
 
 COLORS = {
     'bg': '#141414', 'tile': '#222322', 'tile_hover': '#303328', 'line': '#454941',
@@ -380,6 +382,9 @@ class MobiusWindow(QWidget):
         self._compact_width = self.COMPACT_W
         self._island_status_visible = False
         self._voice_media_pending = None
+        self._glance = GlanceController(start_now=time.monotonic())
+        self._last_power = None
+        self._power_label = ""
         self.setStyleSheet(self._style())
 
         self.header = DropHeader(self)
@@ -405,11 +410,19 @@ class MobiusWindow(QWidget):
         self.panel = QFrame(self)
         self.panel.setObjectName('panel')
         panel_layout = QVBoxLayout(self.panel)
-        panel_layout.setContentsMargins(18, 4, 18, 12)
-        panel_layout.setSpacing(12)
+        panel_layout.setContentsMargins(12, 5, 12, 6)
+        panel_layout.setSpacing(4)
+        self.assistant_page = QWidget(self.panel)
+        assistant_layout = QVBoxLayout(self.assistant_page)
+        assistant_layout.setContentsMargins(15, 12, 15, 10)
+        assistant_layout.setSpacing(13)
+        self.file_page = QWidget(self.panel)
+        file_layout = QVBoxLayout(self.file_page)
+        file_layout.setContentsMargins(10, 8, 10, 8)
+        file_layout.setSpacing(10)
         self.intro = QLabel('Satu Mobius. Semua dalam satu tempat.')
         self.intro.setObjectName('assistantTitle')
-        panel_layout.addWidget(self.intro)
+        assistant_layout.addWidget(self.intro)
         top_row = QHBoxLayout()
         top_row.setSpacing(12)
         self.assistant_status = QLabel('●  Menyiapkan mikrofon offline...')
@@ -423,13 +436,13 @@ class MobiusWindow(QWidget):
         self.folder_button.setObjectName('secondaryButton')
         self.folder_button.clicked.connect(self.choose_folder)
         top_row.addWidget(self.folder_button)
-        panel_layout.addLayout(top_row)
+        assistant_layout.addLayout(top_row)
 
         self.assistant_response = QLabel('Langsung ucapkan “buka kalkulator” atau “cari resep rendang di browser”. Tanpa wake word.')
         self.assistant_response.setObjectName('assistantResponse')
         self.assistant_response.setWordWrap(True)
         self.assistant_response.setMinimumHeight(48)
-        panel_layout.addWidget(self.assistant_response)
+        assistant_layout.addWidget(self.assistant_response)
         # A unified quick-deck: music, lyrics, focus and water live above
         # the existing file tools, without switching assistant/studio modes.
         self.quick = QuickDeck(self.panel)
@@ -438,7 +451,7 @@ class MobiusWindow(QWidget):
         self.quick.media.message.connect(self._spoken_media_success)
         self.quick.media.error.connect(self._spoken_media_error)
         self.quick.media.snapshot.connect(self._refresh_island_status)
-        panel_layout.addWidget(self.quick)
+        self.quick.hide()  # timers/media remain active; pages move into carousel
         title_row = QHBoxLayout()
         self.selection = QLabel('DROP FILE  /  PILIH KONVERSI')
         self.selection.setObjectName('sectionLabel')
@@ -447,7 +460,7 @@ class MobiusWindow(QWidget):
         self.selected_file = QLabel('Belum ada file')
         self.selected_file.setObjectName('selectedFile')
         title_row.addWidget(self.selected_file)
-        panel_layout.addLayout(title_row)
+        file_layout.addLayout(title_row)
         grid = QGridLayout()
         grid.setSpacing(8)
         self.tiles = {}
@@ -455,7 +468,7 @@ class MobiusWindow(QWidget):
             tile = ToolTile(self, spec.key, i)
             self.tiles[spec.key] = tile
             grid.addWidget(tile, i // 3, i % 3)
-        panel_layout.addLayout(grid)
+        file_layout.addLayout(grid)
         bottom = QHBoxLayout()
         self.format_label = QLabel('OUTPUT')
         self.format_label.setObjectName('sectionLabel')
@@ -471,15 +484,36 @@ class MobiusWindow(QWidget):
         self.open_button.setObjectName('primaryButton')
         self.open_button.clicked.connect(self.open_folder)
         bottom.addWidget(self.open_button)
-        panel_layout.addLayout(bottom)
+        file_layout.addLayout(bottom)
         self.note = QLabel('Semua konversi diproses di laptop. Tidak ada unggahan file.')
         self.note.setObjectName('statusText')
-        panel_layout.addWidget(self.note)
+        file_layout.addWidget(self.note)
+        assistant_layout.addStretch(1)
+        file_layout.addStretch(1)
+
+        self.carousel = IslandCarousel(self.panel)
+        self.feature_pages = (
+            ("Music", "#C88BFF"),
+            ("Lyrics", "#75C6FF"),
+            ("Focus Timer", "#F0B56D"),
+            ("Water Reminder", "#4BBEFF"),
+        )
+        for label, accent in self.feature_pages:
+            page = self.quick.pages.widget(0)
+            if page is None:
+                raise RuntimeError("Quick feature widget is missing")
+            self.quick.pages.removeWidget(page)
+            self.carousel.add_page(page, label, accent)
+        self.carousel.add_page(self.file_page, "File Studio", "#E5E7EB")
+        self.carousel.add_page(self.assistant_page, "Assistant", "#A6EE74")
+        panel_layout.addWidget(self.carousel)
+        self.quick.hide()
+
         self.panel.hide()
 
         self._animation = QPropertyAnimation(self, b'geometry', self)
-        self._animation.setDuration(260)
-        self._animation.setEasingCurve(QEasingCurve.Type.OutCubic)
+        self._animation.setDuration(385)
+        self._animation.setEasingCurve(QEasingCurve.Type.OutQuart)
         self._collapse_timer = QTimer(self)
         self._collapse_timer.setSingleShot(True)
         self._collapse_timer.timeout.connect(self._auto_collapse)
@@ -839,6 +873,7 @@ class MobiusWindow(QWidget):
         paths = _paths(event)
         if paths and all(p.suffix.lower() in PDF | WORD | IMAGES for p in paths):
             event.acceptProposedAction()
+            self.carousel.go_to(4, animated=False)
             self._drag_active = True
             self._temporary_until = time.monotonic() + 8
             if not self._expanded:
@@ -857,6 +892,7 @@ class MobiusWindow(QWidget):
             return
         event.acceptProposedAction()
         self.pending = paths
+        self.carousel.go_to(4, animated=False)
         self._set_file_summary()
         self._temporary_until = time.monotonic() + 25
         self.set_expanded(True)
@@ -992,8 +1028,7 @@ class MobiusWindow(QWidget):
             return
         if intent.kind == 'quick' and intent.args.get('page') == 'lyrics':
             self.force_expand()
-            if self.quick._active_page != 1:
-                self.quick.toggle_page(1)
+            self.carousel.go_to(1)
             self._notify('Panel lirik dibuka. Pilih .lrc atau cari lirik online.')
             return
         if intent.kind == 'focus':
@@ -1144,6 +1179,7 @@ class MobiusWindow(QWidget):
 
     def stop_voice(self):
         self._island_pulse.stop()
+        self.carousel.stop()
         self.quick.stop()
         self.feedback.stop()
         self._recovery_hotkey.stop()
