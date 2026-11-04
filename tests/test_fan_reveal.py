@@ -91,3 +91,50 @@ def test_ui_success_triggers_delayed_reveal(monkeypatch, tmp_path):
     window.stop_voice()
     window.close()
     window.deleteLater()
+
+
+def test_gradient_island_and_fan_paint_offscreen_without_qt_errors(monkeypatch):
+    import os
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    from PySide6.QtCore import Qt
+    from PySide6.QtGui import QPixmap
+    from PySide6.QtWidgets import QApplication
+    from mobius.media_bridge import MediaBridge
+    import mobius.ui as ui
+
+    app = QApplication.instance() or QApplication([])
+    monkeypatch.setattr(ui.MobiusWindow, "_setup_tray", lambda self: setattr(self, "tray", None))
+    monkeypatch.setattr(ui.RecoveryHotkey, "start", lambda self: None)
+    monkeypatch.setattr(ui.RecoveryHotkey, "stop", lambda self: None)
+    monkeypatch.setattr(MediaBridge, "refresh", lambda self: None)
+    window = ui.MobiusWindow()
+    window.visibility_timer.stop()
+    window._island_pulse.stop()
+    window.show()
+    window._animation.stop()
+    window.resize(window.COMPACT_W, window.COMPACT_H)
+    compact = QPixmap(window.size())
+    compact.fill(Qt.GlobalColor.transparent)
+    window.render(compact)
+    assert not compact.isNull()
+    top = compact.toImage().pixelColor(window.width() // 2, 2)
+    bottom = compact.toImage().pixelColor(window.width() // 2 + 18, window.height() - 2)
+    assert top.alpha() > 0
+    assert bottom.alpha() > 0
+    assert (top.red(), top.green(), top.blue()) != (bottom.red(), bottom.green(), bottom.blue())
+
+    wheel = window.radial
+    wheel._fan_progress = .5
+    halfway = QPixmap(wheel.size())
+    halfway.fill(Qt.GlobalColor.transparent)
+    wheel.render(halfway)
+    wheel._fan_progress = 1.0
+    expanded = QPixmap(wheel.size())
+    expanded.fill(Qt.GlobalColor.transparent)
+    wheel.render(expanded)
+    assert not halfway.isNull() and not expanded.isNull()
+
+    window._animation.stop()
+    window.stop_voice()
+    window.close()
+    window.deleteLater()
