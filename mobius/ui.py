@@ -26,6 +26,7 @@ from .hotkey import RecoveryHotkey
 from .voice_commands import should_handle_utterance, normalized_utterance
 from .voice_feedback import SpeechFeedback, english_confirmation
 from .quick_deck import QuickDeck
+from .vector_icons import icon, attach
 from .carousel import IslandCarousel
 from .ambient import GlanceController, read_windows_power, clock_label
 
@@ -34,7 +35,7 @@ COLORS = {
     'text': '#FBF8EF', 'muted': '#B8BBAE', 'sky': '#C7FF10', 'accent': '#83AF3B'
 }
 
-ICONS = ['▧', '◫', '▤', '◨', '⊞', '◧', '◉', '↻', '◇']
+
 
 
 def _paths(event) -> list[Path]:
@@ -57,7 +58,7 @@ class Eyes(QWidget):
     """
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setFixedSize(118, 30)
+        self.setFixedSize(94, 26)
         self._base_mood = 'listening'
         self._flash_mood = None
         self._hold_until = 0.0
@@ -131,28 +132,28 @@ class Eyes(QWidget):
     def paintEvent(self, event):
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
-        aura = QRadialGradient(self.width()/2, self.height()/2, 58)
-        aura.setColorAt(0, QColor(153, 255, 84, 35))
-        aura.setColorAt(1, QColor(0, 240, 128, 0))
+        aura = QRadialGradient(self.width()/2, self.height()/2, 44)
+        aura.setColorAt(0, QColor(255, 255, 255, 13))
+        aura.setColorAt(1, QColor(255, 255, 255, 0))
         p.setPen(Qt.PenStyle.NoPen)
         p.setBrush(QBrush(aura))
         p.drawRoundedRect(self.rect(), 15, 15)
 
-        color = QColor('#E8FFE9')  # white-green light from the reference
+        color = QColor('#FAFAFC')  # white-green light from the reference
         p.setPen(QPen(color, 3.8, Qt.PenStyle.SolidLine,
                       Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
         p.setBrush(Qt.BrushStyle.NoBrush)
-        left, right = (34, 15), (84, 15)
+        left, right = (26, 13), (68, 13)
 
         def circle(c, radius=7):
             x, y = c
-            p.setBrush(QColor('#F3FFF0'))
+            p.setBrush(QColor('#FFFFFF'))
             p.drawEllipse(QRect(x-radius, y-radius, radius*2, radius*2))
             p.setBrush(Qt.BrushStyle.NoBrush)
             if self._expression not in ('blink', 'doze'):
                 dx, dy = self._gaze
                 p.setPen(Qt.PenStyle.NoPen)
-                p.setBrush(QColor('#24854C'))
+                p.setBrush(QColor('#3A3A41'))
                 p.drawEllipse(QRect(x+dx-2, y+dy-2, 4, 4))
                 p.setBrush(Qt.BrushStyle.NoBrush)
                 p.setPen(QPen(color, 3.8, Qt.PenStyle.SolidLine,
@@ -243,7 +244,10 @@ class ToolTile(QFrame):
         layout = QHBoxLayout(self)
         layout.setContentsMargins(7, 4, 6, 4)
         layout.setSpacing(6)
-        self.icon = QLabel(ICONS[index])
+        self.icon = QLabel()
+        icon_name = ('image' if 'image' in key or 'img' in key else
+                     'word' if 'word' in key else 'pdf' if 'pdf' in key else 'file')
+        self.icon.setPixmap(icon(icon_name, 18).pixmap(18, 18))
         self.icon.setObjectName('toolIcon')
         self.icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.icon.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
@@ -342,8 +346,8 @@ class InterpretWorker(QObject):
 
 class MobiusWindow(QWidget):
     """Unified always-listening assistant and drag-drop file tool island."""
-    COMPACT_W, COMPACT_H = 158, 42
-    OPEN_W, OPEN_H = 540, 255  # narrow island; tall tools live in internal scroll areas
+    COMPACT_W, COMPACT_H = 124, 38
+    OPEN_W, OPEN_H = 408, 255  # small floating island; conversion tools scroll internally
 
     def __init__(self):
         super().__init__()
@@ -394,8 +398,8 @@ class MobiusWindow(QWidget):
         self.header.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.header.customContextMenuRequested.connect(self._show_context_menu)
         bar = QHBoxLayout(self.header)
-        bar.setContentsMargins(10, 6, 10, 6)
-        bar.setSpacing(0)
+        bar.setContentsMargins(5, 2, 5, 2)
+        bar.setSpacing(5)
         bar.addStretch(1)
         self.eyes = Eyes(self.header)
         self.eyes.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
@@ -403,9 +407,15 @@ class MobiusWindow(QWidget):
         self.island_status = QLabel('')
         self.island_status.setObjectName('islandStatus')
         self.island_status.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.island_status.setMinimumWidth(160)
-        self.island_status.setMaximumWidth(268)
+        self.island_status.setMinimumWidth(0)
+        self.island_status.setMaximumWidth(180)
         self.island_status.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        self.island_glance_icon = QLabel(self.header)
+        self.island_glance_icon.setFixedSize(16, 19)
+        self.island_glance_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.island_glance_icon.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        self.island_glance_icon.hide()
+        bar.addWidget(self.island_glance_icon)
         self.island_status.hide()
         bar.addWidget(self.island_status)
         bar.addStretch(1)
@@ -428,14 +438,16 @@ class MobiusWindow(QWidget):
         assistant_layout.addWidget(self.intro)
         top_row = QHBoxLayout()
         top_row.setSpacing(12)
-        self.assistant_status = QLabel('●  Menyiapkan mikrofon offline...')
+        self.assistant_status = QLabel('Menyiapkan mikrofon offline...')
         self.assistant_status.setObjectName('assistantStatus')
         top_row.addWidget(self.assistant_status, 1)
-        self.voice_button = QPushButton('◉  Matikan mikrofon')
+        self.voice_button = QPushButton('Matikan mikrofon')
+        attach(self.voice_button, 'mic', size=15)
         self.voice_button.setObjectName('voiceButton')
         self.voice_button.clicked.connect(self.toggle_mic)
         top_row.addWidget(self.voice_button)
-        self.folder_button = QPushButton('▤  Folder hasil')
+        self.folder_button = QPushButton('Folder hasil')
+        attach(self.folder_button, 'folder', size=15)
         self.folder_button.setObjectName('secondaryButton')
         self.folder_button.clicked.connect(self.choose_folder)
         top_row.addWidget(self.folder_button)
@@ -493,7 +505,8 @@ class MobiusWindow(QWidget):
         self.folder_note = QLabel(str(self.destination))
         self.folder_note.setObjectName('folderNote')
         bottom.addWidget(self.folder_note, 1)
-        self.open_button = QPushButton('↗  Buka hasil')
+        self.open_button = QPushButton('Buka hasil')
+        attach(self.open_button, 'external', size=15, color='#161616')
         self.open_button.setObjectName('primaryButton')
         self.open_button.clicked.connect(self.open_folder)
         bottom.addWidget(self.open_button)
@@ -506,10 +519,10 @@ class MobiusWindow(QWidget):
 
         self.carousel = IslandCarousel(self.panel)
         self.feature_pages = (
-            ("Music", "#C88BFF"),
-            ("Lyrics", "#75C6FF"),
-            ("Focus Timer", "#F0B56D"),
-            ("Water Reminder", "#4BBEFF"),
+            ("Music", "#FAFAFC"),
+            ("Lyrics", "#FAFAFC"),
+            ("Focus Timer", "#FAFAFC"),
+            ("Water Reminder", "#FAFAFC"),
         )
         for (label, accent), height in zip(self.feature_pages, (145, 198, 158, 230)):
             page = self.quick.pages.widget(0)
@@ -517,9 +530,9 @@ class MobiusWindow(QWidget):
                 raise RuntimeError("Quick feature widget is missing")
             self.quick.pages.removeWidget(page)
             self.carousel.add_page(page, label, accent, content_height=height)
-        self.carousel.add_page(self.file_page, "File Studio", "#E5E7EB",
+        self.carousel.add_page(self.file_page, "File Studio", "#FAFAFC",
                                content_height=238)
-        self.carousel.add_page(self.assistant_page, "Assistant", "#A6EE74",
+        self.carousel.add_page(self.assistant_page, "Assistant", "#FAFAFC",
                                content_height=186)
         self.carousel.page_changed.connect(self._page_selected)
         panel_layout.addWidget(self.carousel)
@@ -716,8 +729,8 @@ class MobiusWindow(QWidget):
         self.setGeometry(self._rect(width, height))
 
     def resizeEvent(self, event):
-        self.header.setGeometry(5, 1, max(1, self.width()-10), 36)
-        self.panel.setGeometry(9, 39, max(1, self.width()-18), max(0, self.height()-45))
+        self.header.setGeometry(4, 0, max(1, self.width()-8), 34)
+        self.panel.setGeometry(7, 35, max(1, self.width()-14), max(0, self.height()-41))
         super().resizeEvent(event)
 
     def paintEvent(self, event):
@@ -750,7 +763,7 @@ class MobiusWindow(QWidget):
         """Cycle eyes → 10-second glance → eyes, without constant music text."""
         now = time.monotonic()
         power = read_windows_power()
-        battery_and_time = f"{power.label} · {clock_label().split('  ·  ')[0]}"
+        battery_and_time = f"{power.label}  {clock_label().split('  ·  ')[0]}"
         if (self._last_power is not None and power.plugged is not None
                 and self._last_power.plugged is not None
                 and power.plugged != self._last_power.plugged):
@@ -758,14 +771,14 @@ class MobiusWindow(QWidget):
             self._glance.show("battery", battery_and_time, now, power.accent)
         self._last_power = power
 
-        options = [("clock", "◷  " + clock_label(), "#EAEAF0")]
+        options = [("clock", clock_label().split("  ·  ")[0], "#FAFAFC")]
         if power.percent is not None:
             options.append(("battery", battery_and_time, power.accent))
 
         focus = self.quick.store.focus
         if focus.deadline is not None:
             remain = focus.remaining()
-            options.append(("focus", f"◴  {remain // 60:02d}:{remain % 60:02d} · Focus", "#F0B56D"))
+            options.append(("focus", f"{remain // 60:02d}:{remain % 60:02d}  Focus", "#FAFAFC"))
 
         media = self.quick.current_media
         if media.get("available") and media.get("status") == "playing":
@@ -776,8 +789,8 @@ class MobiusWindow(QWidget):
                 if 0 <= index < len(self.quick.lyrics):
                     line = self.quick.lyrics[index][1]
             if not line:
-                line = "♫  " + (media.get("title") or "Playing music")
-            options.append(("music", line, "#C88BFF"))
+                line = media.get("title") or "Playing music"
+            options.append(("music", line, "#FAFAFC"))
 
         # Refresh text during the same 10-second glimpse without extending it:
         # the focus countdown and synchronized lyrics should remain live.
@@ -790,15 +803,27 @@ class MobiusWindow(QWidget):
         self._glance.tick(now, options)
         glance_visible = bool(self._glance.message)
         line = self._glance.message
-        line = line[:35] + ("…" if len(line) > 35 else "")
-        self.island_status.setText(line)
+        # Fit the message rather than expanding every glance to a fixed width.
+        display = self.island_status.fontMetrics().elidedText(
+            line, Qt.TextElideMode.ElideRight, 174)
+        self.island_status.setText(display)
         self.island_status.setStyleSheet(
-            f"color: {self._glance.accent}; font-size: 13px; font-weight: 800;"
+            "color: #FAFAFC; font-family: 'Segoe UI Variable', 'Segoe UI'; "
+            "font-size: 12px; font-weight: 650; background: transparent;"
         )
+        if glance_visible:
+            name = {
+                "battery": "charging" if power.plugged else "battery",
+                "clock": "clock", "focus": "timer", "music": "music",
+                "event": "clock",
+            }.get(self._glance.kind, "clock")
+            self.island_glance_icon.setPixmap(icon(name, 15).pixmap(15, 15))
+        self.island_glance_icon.setVisible(glance_visible)
         self.eyes.setVisible(self._expanded or not glance_visible)
         self.island_status.setVisible(glance_visible)
 
-        target_width = 370 if glance_visible else self.COMPACT_W
+        text_width = self.island_status.fontMetrics().horizontalAdvance(display)
+        target_width = min(240, max(150, text_width + 46)) if glance_visible else self.COMPACT_W
         if target_width != self._compact_width:
             self._compact_width = target_width
             if not self._expanded:
@@ -846,7 +871,7 @@ class MobiusWindow(QWidget):
             self._notify(message, mood='warning')
 
     def _quick_alert(self, message: str):
-        accent = "#4BBEFF" if "Water" in message else "#F0B56D"
+        accent = "#FAFAFC"
         self._glance.show("event", message[:38], time.monotonic(), accent)
         self._refresh_island_status()
         self.eyes.set_mode('happy', temporary_ms=2200)
@@ -1150,7 +1175,7 @@ class MobiusWindow(QWidget):
                 return  # Ignore nearby conversations and TV audio.
         if self._interpret_thread is not None:
             return
-        self.assistant_status.setText('●  MEMAHAMI PERINTAH...')
+        self.assistant_status.setText('Memahami perintah...')
         self.assistant_response.setText('Terdengar: ' + phrase[:190])
         self.eyes.set_mode('thinking')
         self._interpret_thread = QThread(self)
@@ -1252,12 +1277,12 @@ class MobiusWindow(QWidget):
 
     def _interpret_finished(self):
         self._interpret_thread = self._interpret_worker = None
-        self.assistant_status.setText('●  MENDENGARKAN' if self.listening_enabled else '○  MIKROFON NONAKTIF')
+        self.assistant_status.setText('Mendengarkan' if self.listening_enabled else 'Mikrofon nonaktif')
         self._set_idle_eye()
 
     def set_listening(self, enabled):
         self.listening_enabled = enabled
-        self.voice_button.setText('◉  Matikan mikrofon' if enabled else '◎  Nyalakan mikrofon')
+        self.voice_button.setText('Matikan mikrofon' if enabled else 'Nyalakan mikrofon')
         if self.tray is not None and self.mic_action.isChecked() != enabled:
             self.mic_action.blockSignals(True)
             self.mic_action.setChecked(enabled)
@@ -1276,7 +1301,7 @@ class MobiusWindow(QWidget):
         if not self.listening_enabled or self.voice_thread is not None:
             return
         from .voice import VoiceWorker
-        self.assistant_status.setText('●  MENDENGARKAN · TANPA WAKE WORD')
+        self.assistant_status.setText('Mendengarkan')
         self._voice_failed = False
         self.eyes.set_mode('listening')
         self.voice_thread = QThread(self)
@@ -1294,7 +1319,7 @@ class MobiusWindow(QWidget):
 
     def _voice_status(self, message):
         if self._interpret_thread is None:
-            self.assistant_status.setText('●  ' + message[:115])
+            self.assistant_status.setText(message[:115])
 
     def _voice_success(self, phrase):
         # Never require "Mobius" before a spoken instruction. Ignore stray
@@ -1311,7 +1336,7 @@ class MobiusWindow(QWidget):
 
     def _voice_failure(self, message):
         self._voice_failed = True
-        self.assistant_status.setText('●  SETUP SUARA DIPERLUKAN')
+        self.assistant_status.setText('Setup suara diperlukan')
         self._notify(message, mood='warning')
 
     def _voice_finished(self):
