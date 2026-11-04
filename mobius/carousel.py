@@ -25,14 +25,14 @@ class IslandCarousel(QWidget):
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(8)
+        layout.setSpacing(5)
         top = QHBoxLayout()
         top.setContentsMargins(4, 0, 4, 0)
         self.previous = QPushButton("‹")
         self.next_button = QPushButton("›")
         for b in (self.previous, self.next_button):
             b.setObjectName("carouselArrow")
-            b.setFixedSize(38, 34)
+            b.setFixedSize(30, 28)
             b.setCursor(Qt.CursorShape.PointingHandCursor)
         self.previous.clicked.connect(lambda: self.step(-1))
         self.next_button.clicked.connect(lambda: self.step(+1))
@@ -49,12 +49,12 @@ class IslandCarousel(QWidget):
 
         self.viewport = QFrame(self)
         self.viewport.setObjectName("carouselViewport")
-        self.viewport.setFixedHeight(363)
+        self.viewport.setFixedHeight(150)
         self.viewport.installEventFilter(self)
         layout.addWidget(self.viewport)
 
         self.dots_row = QHBoxLayout()
-        self.dots_row.setSpacing(7)
+        self.dots_row.setSpacing(5)
         self.dots_row.addStretch(1)
         self.dots: list[QPushButton] = []
         self.dots_row.addStretch(1)
@@ -83,12 +83,12 @@ class IslandCarousel(QWidget):
         self.pages.append(widget)
         self.labels.append(title)
         self.accents.append(accent)
-        self.heights.append(max(150, min(450, int(content_height))))
+        self.heights.append(max(125, min(330, int(content_height))))
         idx = len(self.pages) - 1
         dot = QPushButton("●")
         dot.setObjectName("carouselDot")
         dot.setToolTip(title)
-        dot.setFixedSize(23, 22)
+        dot.setFixedSize(16, 16)
         dot.setCursor(Qt.CursorShape.PointingHandCursor)
         dot.clicked.connect(lambda _=False, target=idx: self.go_to(target))
         self.dots_row.insertWidget(self.dots_row.count() - 1, dot)
