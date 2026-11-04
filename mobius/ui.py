@@ -399,6 +399,8 @@ class MobiusWindow(QWidget):
         self.radial = RadialStudio(self)
         self.radial.files_chosen.connect(self._set_radial_files)
         self.radial.operation_requested.connect(self._run_radial_operation)
+        self.radial.drop_finished.connect(self._radial_drop_finished)
+        self.radial.closed.connect(self._radial_drop_finished)
 
         self._animation = QPropertyAnimation(self, b'geometry', self)
         self._animation.setDuration(385)
@@ -630,10 +632,12 @@ class MobiusWindow(QWidget):
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         w, h = self.width(), self.height()
         if self._tip_mode:
-            # Only the line is painted, despite the larger drag/drop hit area.
+            # Clear, unobtrusive line over bright or dark wallpapers.
             p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(QColor("#0A0A0E"))
+            p.drawRoundedRect(QRect((w - 72) // 2, 0, 72, 11), 5, 5)
             p.setBrush(QColor("#F4F4F7"))
-            p.drawRoundedRect(QRect((w - 58) // 2, 2, 58, 5), 2.5, 2.5)
+            p.drawRoundedRect(QRect((w - 50) // 2, 3, 50, 4), 2, 2)
             p.end()
             return
         radius = min(20 if self._expanded else 17, max(2, h // 2))
@@ -909,13 +913,15 @@ class MobiusWindow(QWidget):
         if (new_press and self.radial.isVisible()
                 and not self.radial.geometry().contains(cursor)
                 and not self.geometry().contains(cursor)
+                and not self.radial._choose_dialog_open
                 and QApplication.activeModalWidget() is None):
             self.radial.hide()
 
         # A file picker or confirmation dialog is deliberate interaction.
         # Never hide its parent while the native/Qt modal is in use.
         if (QApplication.activeModalWidget() is not None
-                or QApplication.activePopupWidget() is not None):
+                or QApplication.activePopupWidget() is not None
+                or self.radial._choose_dialog_open):
             self._last_foreground_class = cls
             return
 
@@ -965,6 +971,8 @@ class MobiusWindow(QWidget):
         else:
             self._drag_armed_at = None
             self._mouse_press_start = None
+        if self._drag_active and not pressed:
+            self._drag_active = False
         if self._drag_active and pressed and not self.radial.isVisible():
             self._temporary_until = now + 2.0
 
@@ -1043,8 +1051,14 @@ class MobiusWindow(QWidget):
             self._set_file_summary()
 
     def _run_radial_operation(self, key):
+        self._drag_active = False
         self.radial.hide()
         self.request_operation(key)
+
+    def _radial_drop_finished(self):
+        self._drag_active = False
+        self._drag_armed_at = None
+        self._temporary_until = 0.0
 
     def _drag_enter(self, event):
         paths = _paths(event)
