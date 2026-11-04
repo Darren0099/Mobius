@@ -1,32 +1,67 @@
 name: Build Mobius Windows EXE
+
 on:
   workflow_dispatch:
   push:
     tags:
       - 'v*'
+    branches:
+      - main
+    paths:
+      - '.github/workflows/windows-exe.yml'
+
 permissions:
   contents: read
+
 jobs:
   build:
     runs-on: windows-latest
+    timeout-minutes: 50
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Install dependencies
-        run: python -m pip install -r requirements-extended.txt -r requirements-voice.txt pyinstaller pytest
-      - name: Test parser and conversion engine
-        run: python -m pytest -q tests
-      - name: Build Windows desktop executable
+      - name: Install full desktop, media and voice dependencies
         run: >-
-          pyinstaller --noconfirm --clean --onefile --windowed
+          python -m pip install
+          -r requirements-extended.txt
+          -r requirements-voice.txt
+          -r requirements-media.txt
+          pyinstaller pytest
+      - name: Test new island, parser and conversion modules
+        run: python -m pytest -q tests
+        env:
+          QT_QPA_PLATFORM: offscreen
+      - name: Package standalone Windows desktop executable
+        run: >-
+          python -m PyInstaller --noconfirm --clean --onefile --windowed
           --name Mobius --icon assets/mobius.ico
           --add-data "assets/mobius.ico;assets"
-          --collect-all pdf2docx --collect-all fitz
+          --collect-all pdf2docx --collect-all pymupdf
           --collect-all faster_whisper --collect-all ctranslate2
-          --hidden-import sounddevice --hidden-import win32com.client app.py
-      - uses: actions/upload-artifact@v4
+          --hidden-import sounddevice --hidden-import win32com.client
+          --hidden-import winrt.windows.media.control app.py
+      - name: Upload standalone Mobius.exe
+        uses: actions/upload-artifact@v4
         with:
-          name: Mobius-Windows-exe
+          name: Mobius-Windows-EXE
           path: dist/Mobius.exe
+      - name: Build optional user-level installer
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          choco install innosetup -y --no-progress
+          $compiler = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (Test-Path $compiler) {
+            & $compiler Mobius.iss
+          } else {
+            Write-Warning "Inno Setup compiler unavailable; standalone EXE is already built."
+          }
+      - name: Upload optional installer if built
+        uses: actions/upload-artifact@v4
+        if: success() || failure()
+        with:
+          name: Mobius-Windows-Setup
+          path: installer/Mobius-Setup.exe
+          if-no-files-found: ignore
