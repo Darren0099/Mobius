@@ -536,44 +536,69 @@ class MobiusWindow(QWidget):
         QTimer.singleShot(900, self.start_voice)
 
     def _style(self):
+        """Dark glass foundation; restrained accent colors by feature."""
         return """
-        QWidget { color: #FBF8EF; font-family: 'Urbanist', 'Segoe UI', Arial; }
-        #dropHeader, #panel { background: transparent; }
-        #islandStatus { color: #E9FFE5; font-size: 11px; font-weight: 750; padding-left: 3px; }
-        #quickPage { background: #13251D; border: 1px solid #30674A; border-radius: 14px; }
-        #quickTrack { color: #F5FFF7; font-size: 13px; font-weight: 700; }
-        #quickClock { color: #C7FF10; font-size: 37px; font-weight: 900; }
-        #quickHint { color: #A7C9B4; font-size: 10px; }
-        #lyricLeft { background: #123529; border: 1px solid #44774F; border-radius: 12px; }
-        #lyricLive { color: #D8FFD0; font-size: 15px; font-weight: 750; }
-        #quickLyrics { background: #0C1715; color: #E6FFEF; border: 1px solid #38644B; border-radius: 10px; }
-        #quickLyrics::item:selected { background: #336C45; color: #F7FFE6; }
-        #quickButton { background: #213D2F; color: #DDF7E4; border: 1px solid #35684B; border-radius: 10px; }
-        #quickButton:checked { background: #A3FF37; color: #0A1D12; }
-        #quickPrimary { background: #C7FF10; color: #0C2113; border-radius: 10px; }
-        QProgressBar { background: #172D24; color: #101910; border: 1px solid #406E50; border-radius: 8px; text-align: center; }
-        QProgressBar::chunk { background: #A1FF2B; border-radius: 7px; }
-        #sectionLabel { color: #C7FF10; font-weight: 800; }
-        #assistantTitle { font-size: 20px; font-weight: 800; color: #F5F5F8; }
-        #assistantStatus { font-size: 11px; color: #C7FF10; font-weight: 700; }
-        #assistantResponse { background: #2D3426; border: 1px solid #668B35; border-radius: 12px; font-size: 12px; color: #F5F5F8; padding: 10px; }
-        #toolTile { background: #222322; border: 1px solid #41433C; border-radius: 13px; }
-        #toolTile:hover, #toolTile[selected='true'] { background: #303625; border: 1px solid #C7FF10; }
-        #toolTile[available='false'] { background: #171817; border-color: #2B2E28; }
-        #toolTile[available='false'] QLabel { color: #737870; }
-        #toolIcon { background: #373E28; border-radius: 10px; font-size: 22px; font-weight: bold; color: #C7FF10; }
-        #toolTitle { font-weight: 750; font-size: 12px; color: #F5F5F8; }
-        #toolSubtitle { font-size: 10px; color: #ADB5A1; }
-        #selectedFile { font-size: 11px; color: #FBF8EF; }
-        #folderNote { color: #A0A795; font-size: 10px; }
-        #statusText { color: #C7FF10; font-size: 11px; }
-        QComboBox { background: #252724; border: 1px solid #444840; padding: 7px; border-radius: 9px; color: white; }
+        QWidget { color: #E9EAF0; font-family: 'Urbanist', 'Segoe UI', Arial; }
+        #dropHeader, #panel, #musicPage, #lyricsPage, #focusPage,
+        #waterPage, #filePage, #assistantPage { background: transparent; }
+        #carouselViewport { background: #08090D; border: 1px solid #272830; border-radius: 16px; }
+        #carouselArrow {
+            background: #1A1B21; border: 1px solid #383944; border-radius: 13px;
+            color: #E9EAF0; font-size: 24px; font-weight: 800;
+        }
+        #carouselArrow:hover { background: #323440; }
+        #carouselArrow:disabled { color: #555763; background: #101115; }
+        #carouselIndex { color: #7E818E; font-size: 11px; font-weight: 700; }
+        #islandStatus { color: #F3F4F8; font-size: 13px; font-weight: 800; padding-left: 3px; }
+        #quickTrack { color: #F6F6FA; font-size: 14px; font-weight: 700; }
+        #quickClock { color: #F0B56D; font-size: 42px; font-weight: 900; }
+        #quickHint { color: #8D92A2; font-size: 10px; }
+        #lyricLeft { background: #121421; border: 1px solid #303E5A; border-radius: 13px; }
+        #lyricLive { color: #9ED5FF; font-size: 15px; font-weight: 750; }
+        #quickLyrics { background: #0C0E15; color: #F1F3FA; border: 1px solid #343A51; border-radius: 10px; }
+        #quickLyrics::item:selected { background: #27445E; color: #C8E9FF; }
+        #quickButton {
+            background: #1C1D24; color: #DEE0E8; border: 1px solid #343640;
+            border-radius: 10px;
+        }
+        #quickButton:hover { background: #30323B; }
+        #quickPrimary { background: #F0B56D; color: #121213; border-radius: 10px; }
+        #waterPage #quickPrimary { background: #48B7F4; color: #07131B; }
+        #musicPage #quickPrimary { background: #C88BFF; color: #13091D; }
+        QProgressBar {
+            background: #121A24; color: #D9EDFF; border: 1px solid #284962;
+            border-radius: 8px; text-align: center;
+        }
+        QProgressBar::chunk { background: #49B9F6; border-radius: 7px; }
+        #sectionLabel { color: #C7CBD3; font-weight: 800; }
+        #assistantTitle { font-size: 22px; font-weight: 800; color: #F3F4F7; }
+        #assistantStatus { font-size: 11px; color: #A6EE74; font-weight: 700; }
+        #assistantResponse {
+            background: #141820; border: 1px solid #303746; border-radius: 12px;
+            font-size: 12px; color: #E8ECF2; padding: 10px;
+        }
+        #toolTile { background: #16171C; border: 1px solid #363842; border-radius: 13px; }
+        #toolTile:hover, #toolTile[selected='true'] {
+            background: #292B34; border: 1px solid #E1E3E8;
+        }
+        #toolTile[available='false'] { background: #101115; border-color: #272832; }
+        #toolTile[available='false'] QLabel { color: #61646D; }
+        #toolIcon { background: #30313B; border-radius: 10px; color: #F0F1F4; font-size: 22px; }
+        #toolTitle { font-weight: 750; font-size: 12px; color: #F0F1F4; }
+        #toolSubtitle { font-size: 10px; color: #9B9DA9; }
+        #selectedFile { font-size: 11px; color: #E7E7EC; }
+        #folderNote { color: #90939E; font-size: 10px; }
+        #statusText { color: #B7BABF; font-size: 11px; }
+        QComboBox, QSpinBox {
+            background: #1A1B22; border: 1px solid #434552;
+            padding: 7px; border-radius: 9px; color: #E9EBF0;
+        }
         QPushButton { padding: 8px 11px; font-size: 11px; font-weight: 700; border-radius: 10px; }
-        #secondaryButton { background: #2A3025; border: 1px solid #525C43; color: #F5F5F8; }
-        #primaryButton { background: #C7FF10; border: 1px solid #C7FF10; color: #141414; }
-        #voiceButton { background: #353C2B; border: 1px solid #83AF3B; color: #C7FF10; }
-        QMenu { background: #222322; color: #FBF8EF; border: 1px solid #515C35; }
-        QMenu::item:selected { background: #465329; }
+        #secondaryButton { background: #252630; border: 1px solid #424552; color: #F0F1F5; }
+        #primaryButton { background: #E4E7EC; border: 1px solid #E4E7EC; color: #17181C; }
+        #voiceButton { background: #20282A; border: 1px solid #4B6F63; color: #A6EE74; }
+        QMenu { background: #1A1B21; color: #F0F1F4; border: 1px solid #464751; }
+        QMenu::item:selected { background: #343640; }
         """
 
     def _setup_tray(self):
@@ -676,39 +701,29 @@ class MobiusWindow(QWidget):
         super().resizeEvent(event)
 
     def paintEvent(self, event):
+        """Seamless black notch with a subtle charcoal highlight, no green wash."""
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         w, h = self.width(), self.height()
-        # Flat top, rounded bottom: the island grows directly out of the
-        # display edge instead of floating below the webcam bezel.
-        radius = 28 if self._expanded else 24
+        radius = 30 if self._expanded else 23
         shape = QPainterPath()
         shape.moveTo(0, 0)
         shape.lineTo(w, 0)
-        shape.lineTo(w, h-radius)
-        shape.quadTo(w, h, w-radius, h)
+        shape.lineTo(w, h - radius)
+        shape.quadTo(w, h, w - radius, h)
         shape.lineTo(radius, h)
-        shape.quadTo(0, h, 0, h-radius)
+        shape.quadTo(0, h, 0, h - radius)
         shape.closeSubpath()
-        dark = QLinearGradient(0, 0, 0, h)
-        dark.setColorAt(0, QColor('#020907'))
-        dark.setColorAt(.68, QColor('#071A15'))
-        dark.setColorAt(1, QColor('#103E2F') if not self._expanded else QColor('#0D231B'))
-        p.fillPath(shape, QBrush(dark))
-        # Two soft glows, emerald + chartreuse, rather than Nusa's purple.
-        green = QRadialGradient(w/2, h+12, max(95, w*.54))
-        green.setColorAt(0, QColor(135, 255, 45, 126 if not self._expanded else 49))
-        green.setColorAt(.42, QColor(22, 239, 131, 58 if not self._expanded else 22))
-        green.setColorAt(1, QColor(22, 239, 131, 0))
-        p.setClipPath(shape)
-        p.fillRect(self.rect(), QBrush(green))
-        p.setClipping(False)
-        # Fine bottom edge / highlight without a bright capsule border.
-        p.setPen(QPen(QColor(148, 255, 82, 74), 1))
+        grad = QLinearGradient(0, 0, 0, h)
+        grad.setColorAt(0, QColor("#030305"))
+        grad.setColorAt(.70, QColor("#08080B"))
+        grad.setColorAt(1, QColor("#15161B"))
+        p.fillPath(shape, QBrush(grad))
+        p.setPen(QPen(QColor(255, 255, 255, 13), 1))
         p.drawPath(shape)
         p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(QColor(101, 168, 128, 90))
-        p.drawEllipse(QRect(w//2-3, 1, 6, 4))
+        p.setBrush(QColor(113, 118, 128, 80))
+        p.drawEllipse(QRect(w // 2 - 2, 1, 4, 4))
         p.end()
 
     def _refresh_island_status(self, *_):
