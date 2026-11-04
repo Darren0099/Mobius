@@ -400,8 +400,8 @@ class MobiusWindow(QWidget):
         self.island_status = QLabel('')
         self.island_status.setObjectName('islandStatus')
         self.island_status.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.island_status.setMinimumWidth(110)
-        self.island_status.setMaximumWidth(180)
+        self.island_status.setMinimumWidth(160)
+        self.island_status.setMaximumWidth(268)
         self.island_status.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
         self.island_status.hide()
         bar.addWidget(self.island_status)
@@ -727,32 +727,55 @@ class MobiusWindow(QWidget):
         p.end()
 
     def _refresh_island_status(self, *_):
-        # Idle = eyes only. Playing media or a focus session can temporarily
-        # extend the island with glanceable information.
+        """Cycle eyes → 10-second glance → eyes, without constant music text."""
+        now = time.monotonic()
+        power = read_windows_power()
+        if (self._last_power is not None and power.plugged is not None
+                and self._last_power.plugged is not None
+                and power.plugged != self._last_power.plugged):
+            # Charger plugged/unplugged takes priority over the periodic cycle.
+            self._glance.show("battery", power.label, now, power.accent)
+        self._last_power = power
+
+        options = [("clock", "◷  " + clock_label(), "#EAEAF0")]
+        if power.percent is not None:
+            options.append(("battery", power.label, power.accent))
+
         focus = self.quick.store.focus
-        media = self.quick.current_media
-        line = ''
         if focus.deadline is not None:
             remain = focus.remaining()
-            line = f'◴  {remain // 60:02d}:{remain % 60:02d}'
-        elif media.get('available') and media.get('status') == 'playing':
+            options.append(("focus", f"◴  {remain // 60:02d}:{remain % 60:02d} · Focus", "#F0B56D"))
+
+        media = self.quick.current_media
+        if media.get("available") and media.get("status") == "playing":
+            line = ""
             if self.quick.lyrics:
                 from .lyrics import active_line
-                idx = active_line(self.quick.lyrics, self.quick.estimated_position())
-                if 0 <= idx < len(self.quick.lyrics):
-                    line = self.quick.lyrics[idx][1]
+                index = active_line(self.quick.lyrics, self.quick.estimated_position())
+                if 0 <= index < len(self.quick.lyrics):
+                    line = self.quick.lyrics[index][1]
             if not line:
-                line = '♫  ' + (media.get('title') or 'Playing')
-        self.island_status.setText(line[:28] + ('…' if len(line) > 28 else ''))
-        visible = bool(line)
-        if visible != self._island_status_visible:
-            self._island_status_visible = visible
-            self.island_status.setVisible(visible)
-            self._compact_width = 342 if visible else self.COMPACT_W
+                line = "♫  " + (media.get("title") or "Playing music")
+            options.append(("music", line, "#C88BFF"))
+
+        self._glance.tick(now, options)
+        glance_visible = bool(self._glance.message)
+        line = self._glance.message
+        line = line[:35] + ("…" if len(line) > 35 else "")
+        self.island_status.setText(line)
+        self.island_status.setStyleSheet(
+            f"color: {self._glance.accent}; font-size: 13px; font-weight: 800;"
+        )
+        self.eyes.setVisible(self._expanded or not glance_visible)
+        self.island_status.setVisible(glance_visible)
+
+        target_width = 370 if glance_visible else self.COMPACT_W
+        if target_width != self._compact_width:
+            self._compact_width = target_width
             if not self._expanded:
                 self._animation.stop()
                 self._animation.setStartValue(self.geometry())
-                self._animation.setEndValue(self._rect(self._compact_width, self.COMPACT_H))
+                self._animation.setEndValue(self._rect(target_width, self.COMPACT_H))
                 self._animation.start()
 
     def _quick_changed(self, opened: bool):
@@ -785,6 +808,9 @@ class MobiusWindow(QWidget):
             self._notify(message, mood='warning')
 
     def _quick_alert(self, message: str):
+        accent = "#4BBEFF" if "Water" in message else "#F0B56D"
+        self._glance.show("event", message[:38], time.monotonic(), accent)
+        self._refresh_island_status()
         self.eyes.set_mode('happy', temporary_ms=2200)
         self._notify(message)
         if self.tray is not None:
