@@ -1035,6 +1035,13 @@ class MobiusWindow(QWidget):
 
         self._dismiss_outside_click(cursor, pressed, now)
 
+        # A file picker or confirmation dialog is deliberate interaction.
+        # Never hide its parent while the native/Qt modal is in use.
+        if (QApplication.activeModalWidget() is not None
+                or QApplication.activePopupWidget() is not None):
+            self._last_foreground_class = cls
+            return
+
         # Alt+Tab or switching to a new foreground application must clear
         # previously opened panels. An old panel_open flag is not permission
         # to cover browser tabs indefinitely.
