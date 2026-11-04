@@ -77,10 +77,10 @@ def test_quick_deck_qt_widget_creation():
     app = QApplication.instance() or QApplication([])
     deck = QuickDeck()
     assert len(deck.nav) == 4
-    assert not deck.pages.isVisible()
+    assert deck.pages.isHidden()
     deck.toggle_page(2)
-    assert deck.pages.isVisible()
+    assert not deck.pages.isHidden()
     deck.toggle_page(2)
-    assert not deck.pages.isVisible()
+    assert deck.pages.isHidden()
     deck.stop()
     deck.deleteLater()
