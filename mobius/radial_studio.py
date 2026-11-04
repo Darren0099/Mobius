@@ -54,6 +54,7 @@ class RadialStudio(QWidget):
 
     operation_requested = Signal(str)
     files_chosen = Signal(object)
+    drop_finished = Signal()
     closed = Signal()
 
     def __init__(self, parent=None):
@@ -71,6 +72,7 @@ class RadialStudio(QWidget):
         self.highlight = -1
         self.message = "Drop a file or select one to begin"
         self._options = list(OPERATIONS)
+        self._choose_dialog_open = False
         self._labels = {
             "image_pdf": ("Image", "to PDF"),
             "pdf_image": ("PDF", "to Image"),
@@ -107,13 +109,15 @@ class RadialStudio(QWidget):
         mid = -90 + index * sweep
         start, stop = mid - sweep / 2 + 2.1, mid + sweep / 2 - 2.1
         result = QPainterPath()
+        first = True
         for radius, a1, a2, steps in ((202, start, stop, 16), (80, stop, start, 16)):
             for j in range(steps + 1):
                 angle = math.radians(a1 + (a2 - a1) * j / steps)
                 p = QPointF(center.x() + radius * math.cos(angle),
                             center.y() + radius * math.sin(angle))
-                if result.isEmpty():
+                if first:
                     result.moveTo(p)
+                    first = False
                 else:
                     result.lineTo(p)
         result.closeSubpath()
@@ -187,9 +191,13 @@ class RadialStudio(QWidget):
     def activate_at(self, x: float, y: float) -> str | None:
         index = wheel_hit(x, y, self.width(), self.height(), len(self._options))
         if index == -2:
-            files, _ = QFileDialog.getOpenFileNames(
-                self, "Choose files for Mobius", str(Path.home()),
-                "Supported files (*.pdf *.doc *.docx *.jpg *.jpeg *.png *.webp *.bmp *.tif *.tiff)")
+            self._choose_dialog_open = True
+            try:
+                files, _ = QFileDialog.getOpenFileNames(
+                    self, "Choose files for Mobius", str(Path.home()),
+                    "Supported files (*.pdf *.doc *.docx *.jpg *.jpeg *.png *.webp *.bmp *.tif *.tiff)")
+            finally:
+                self._choose_dialog_open = False
             if files:
                 paths = [Path(p) for p in files]
                 self.set_files(paths)
@@ -236,6 +244,7 @@ class RadialStudio(QWidget):
         self.set_files(paths)
         self.files_chosen.emit(paths)
         event.acceptProposedAction()
+        self.drop_finished.emit()
         self.activate_at(event.position().x(), event.position().y())
 
     def keyPressEvent(self, event):
