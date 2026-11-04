@@ -1,38 +1,41 @@
-MOBIUS v0.7 — WINDOWS LIVING ISLAND
+MOBIUS v0.8 — DARK CAROUSEL LIVING ISLAND (Windows 10/11)
 
-A. RUN FROM GITHUB (Python 3.12 installed)
-1. Quit any old Mobius process from the system tray.
-2. Open PowerShell and run:
+A. PULL THE UPDATE
+1. Quit the older Mobius instance using its system-tray icon.
+2. Open PowerShell:
    cd "$HOME\Documents\Mobius-GitHub"
    git pull --ff-only origin main
-   .\install-media-windows.bat
    .\run-debug-windows.bat
-3. The media-install BAT is needed only once for Spotify/Apple Music/YouTube
-   controls exposed through Windows system media sessions.
-4. Whisper already installed? Do not re-download. Otherwise run:
-   .\install-voice-windows.bat
-5. To use local Qwen language understanding, install Ollama + qwen2.5:3b
-   (optional; basic commands still work without it).
+3. Debug mode forces the expanded window to show even over PowerShell.
+   Once it works, regular launch: .\run-windows.bat
+4. Keep .venv, Whisper cache and Ollama installation. No model download is
+   needed again for this visual update.
 
-B. USE THE ISLAND
-- Hover the top center edge, or press Ctrl+Alt+M.
-- Idle: glowing lime/emerald robot eyes; look around, blink and get sleepy.
-- Playing song: island shows track name or current synchronized lyric line.
-- Focus timer: island shows time remaining.
-- Open island, then choose MUSIC, LYRICS, FOCUS or WATER above File Studio.
-- Lyrics: Open local .LRC (offline), or explicitly Find lyrics online via LRCLIB.
-- Focus: start, pause, reset; short soft chime between work and break.
-- Water: adjust bottle, daily target, reminder hours and interval; log a drink.
-- Voice: "buka kalkulator", "pause musik", "mulai fokus 25 menit",
-         "catat minum 250 ml", "tampilkan lirik".
-- Voice success confirmations are spoken in English using local Windows SAPI.
-- Model weights and user water logs stay on this PC.
+B. DARK ISLAND AND CAROUSEL
+- Eyes remain the default when the desktop is active.
+- Every ~38 seconds a clock/battery/music/focus glance may appear for ~10 s.
+  When unplugging or plugging in charging, the battery glance gets priority.
+  All glances return to the expressive robot eyes.
+- When a browser or another app is foreground, the compact bar hides.
+  Hover at the top-center edge (~0.7s) for temporary reveal.
+  Use Ctrl+Alt+M or the tray icon to open a persistent expanded panel.
+- Expand: swipe horizontally or use arrows / dots through:
+  Music, Lyrics, Focus Timer, Water Reminder, File Studio, Assistant.
+- Dark base colors; per-feature accents: music purple, lyrics cyan,
+  focus amber, water blue, File Studio neutral, Assistant lime.
+- Drag files to select the dedicated File Studio page automatically.
+- Voice commands work without saying Mobius. Windows SAPI replies in English.
 
-C. BUILD AN EXE
-1. Run .\build-windows.bat on Windows, then open dist\Mobius.exe.
-2. Or use GitHub Actions → Build Mobius Windows EXE → Run workflow.
-   Download Mobius-Windows-EXE artifact when the build is successful.
-3. Optional Mobius-Setup.exe can be generated with Mobius.iss and Inno Setup.
-4. Models are not embedded. A fresh Windows user must download Whisper once.
+C. OPTIONAL MEDIA AND PACKAGING
+- For native Windows media sessions once: .\install-media-windows.bat
+- Generate an EXE: .\build-windows.bat, then dist\Mobius.exe.
+- Or download Windows EXE/installer from successful GitHub Actions artifacts.
+- Native application EXE does NOT include Whisper/Ollama model weights.
 
-See README.md for feature details, dependencies and limitations.
+D. IF IT DOES NOT OPEN
+- Run .\test-qt-windows.bat for a minimal Qt-window diagnostic.
+- Run .\run-debug-windows.bat to see startup messages.
+- Startup log: %USERPROFILE%\Documents\Mobius\mobius-startup.log
+- Crash log: %USERPROFILE%\Documents\Mobius\mobius-error.log
+
+See README.md for detailed behavior, privacy and limitations.
