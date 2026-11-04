@@ -375,6 +375,7 @@ class MobiusWindow(QWidget):
         self._last_voice_phrase = ''
         self._last_voice_at = 0.0
         self._quick_extra = 0
+        self._voice_media_pending = None
         self.setStyleSheet(self._style())
 
         self.header = DropHeader(self)
@@ -422,6 +423,8 @@ class MobiusWindow(QWidget):
         self.quick = QuickDeck(self.panel)
         self.quick.changed.connect(self._quick_changed)
         self.quick.alert.connect(self._quick_alert)
+        self.quick.media.message.connect(self._spoken_media_success)
+        self.quick.media.error.connect(self._spoken_media_error)
         panel_layout.addWidget(self.quick)
         title_row = QHBoxLayout()
         self.selection = QLabel('DROP FILE  /  PILIH KONVERSI')
@@ -664,6 +667,24 @@ class MobiusWindow(QWidget):
         self._animation.setEndValue(
             self._rect(self.OPEN_W, self.OPEN_H + self._quick_extra))
         self._animation.start()
+
+    def _spoken_media_success(self, message: str):
+        action = self._voice_media_pending
+        self._voice_media_pending = None
+        if action:
+            descriptions = {
+                'play': 'Okay, music is playing.',
+                'pause': 'Okay, music has been paused.',
+                'toggle': 'Okay, playback has been toggled.',
+                'next': 'Okay, next track.',
+                'previous': 'Okay, previous track.',
+            }
+            self.feedback.speak(descriptions.get(action, "Okay, media updated."))
+
+    def _spoken_media_error(self, message: str):
+        if self._voice_media_pending:
+            self._voice_media_pending = None
+            self._notify(message, mood='warning')
 
     def _quick_alert(self, message: str):
         self.eyes.set_mode('happy', temporary_ms=2200)
@@ -912,6 +933,54 @@ class MobiusWindow(QWidget):
         self._interpret_thread.start()
 
     def _dispatch_intent(self, intent):
+        if intent.kind == 'media':
+            action = intent.args.get('action', '')
+            if action not in ('play','pause','toggle','next','previous'):
+                return
+            self._voice_media_pending = action
+            self.quick.media.control(action)
+            self._notify('Mengirim perintah ke pemutar media Windows...')
+            return
+        if intent.kind == 'quick' and intent.args.get('page') == 'lyrics':
+            self.force_expand()
+            if self.quick._active_page != 1:
+                self.quick.toggle_page(1)
+            self._notify('Panel lirik dibuka. Pilih .lrc atau cari lirik online.')
+            return
+        if intent.kind == 'focus':
+            action = intent.args.get('action')
+            timer = self.quick.store.focus
+            if action == 'start':
+                minutes = intent.args.get('minutes')
+                if minutes is not None and timer.deadline is None:
+                    self.quick.focus_minutes.setValue(minutes)
+                if timer.deadline is None:
+                    timer.start()
+                self.quick._render_focus()
+                self._notify('Timer fokus berjalan.')
+                self.feedback.speak('Okay, your focus timer has started.')
+            elif action == 'pause':
+                timer.pause()
+                self.quick._render_focus()
+                self._notify('Timer fokus dijeda.')
+                self.feedback.speak('Okay, your focus timer is paused.')
+            elif action == 'reset':
+                timer.reset()
+                self.quick._render_focus()
+                self._notify('Timer fokus direset.')
+                self.feedback.speak('Okay, focus timer reset.')
+            self.quick.store.save()
+            return
+        if intent.kind == 'water':
+            try:
+                total = self.quick.store.water.add(intent.args.get('ml'))
+                self.quick.store.save()
+                self.quick._render_water()
+                self._notify(f'Air tercatat. Total hari ini: {total} ml.')
+                self.feedback.speak('Okay, your water intake has been logged.')
+            except (ValueError, TypeError) as exc:
+                self._notify(str(exc), mood='warning')
+            return
         if intent.dangerous:
             self.force_expand()  # dangerous actions must have a visible confirmation
             answer = QMessageBox.question(self, 'Konfirmasi shutdown Windows',
