@@ -8,6 +8,7 @@ from __future__ import annotations
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
+import time
 
 from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtGui import QColor, QPainter, QPen
@@ -66,6 +67,7 @@ class QuickDeck(QWidget):
         super().__init__(parent)
         self.store = WellnessStore()
         self.current_media = {"available": False}
+        self._media_clock_at = time.monotonic()
         self.lyrics = []
         self._lyric_key = None
         self._pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="MobiusLyrics")
@@ -218,8 +220,8 @@ class QuickDeck(QWidget):
         return widget
 
     def _media_updated(self, current):
-        old = self.current_media
         self.current_media = current
+        self._media_clock_at = time.monotonic()
         if not current.get("available"):
             self.track.setText("No active Windows media session")
             self.seek.setEnabled(False)
@@ -294,10 +296,17 @@ class QuickDeck(QWidget):
             self.lyric_list.addItem(item)
         self._highlight_lyric()
 
+    def estimated_position(self):
+        position = float(self.current_media.get("position", 0))
+        if self.current_media.get("status") == "playing":
+            position += max(0, time.monotonic() - self._media_clock_at)
+        duration = float(self.current_media.get("duration", 0))
+        return min(position, duration) if duration else position
+
     def _highlight_lyric(self):
         if not self.lyrics:
             return
-        idx = active_line(self.lyrics, self.current_media.get("position", 0))
+        idx = active_line(self.lyrics, self.estimated_position())
         if 0 <= idx < self.lyric_list.count() and self.lyric_list.currentRow() != idx:
             self.lyric_list.setCurrentRow(idx)
             self.lyric_list.scrollToItem(self.lyric_list.item(idx))
@@ -363,6 +372,7 @@ class QuickDeck(QWidget):
             QApplication.beep()
             self.alert.emit("Focus session finished. Time to switch mode.")
         self._render_focus()
+        self._highlight_lyric()
         water = self.store.water
         before = water.day
         water.ensure_today()
