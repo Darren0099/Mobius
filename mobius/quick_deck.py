@@ -45,7 +45,7 @@ class WaterBars(QWidget):
             bar_w = width / 24 * .72
             x = 5 + h * width / 24
             size = self.bars[h] / top * height
-            p.setBrush(QColor("#A6FC24" if self.bars[h] else "#2E3D32"))
+            p.setBrush(QColor("#4BBEFF" if self.bars[h] else "#262A33"))
             p.drawRoundedRect(int(x), int(height - size + 3), max(2, int(bar_w)),
                               max(3, int(size)), 2, 2)
         p.end()
