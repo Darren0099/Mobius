@@ -1,4 +1,4 @@
-MOBIUS SOURCE — RADIAL FILE STUDIO AND PERSISTENT DROP TIP (Windows 10/11)
+MOBIUS SOURCE — SUNSET ISLAND (Windows 10/11)
 
 A. PULL THE UPDATE
 1. Quit the older Mobius instance using its system-tray icon.
@@ -62,3 +62,15 @@ F. RADIAL FILE STUDIO (SOURCE-ONLY REVISION)
 - Press Escape or click outside the wheel to close; robot eyes stay at top.
 - New almond-shaped eyes have white eyelids and dark moving pupils.
 - No installer or EXE will be generated until explicitly approved.
+
+G. SUNSET REDESIGN (LATEST SOURCE; NO WINDOWS BUILD)
+- Desktop: white expressive kaomoji robot face in a black/orange-red notch.
+- Another app: ONLY a 34 x 4 black line, 96 x 14 transparent drop target.
+- Return to desktop: eyes reappear without a manual click.
+- Valid radial file formats are colored sunset orange/red.
+- Hover valid sector: the cake slice rises outward smoothly up to ~16 px.
+- Disabled radial sectors are gray and cannot run conversions.
+- Music, Lyrics, Focus and Water use compact orange/coral cards.
+- Focus and Water display native animated progress rings.
+- No need to reinstall Whisper/Ollama. Do NOT run build-windows.bat.
+- To run normally: git pull --ff-only origin main, then .\run-windows.bat.
