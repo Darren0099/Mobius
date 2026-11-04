@@ -17,7 +17,7 @@ set "PDF_FLAGS="
 ".venv\Scripts\python.exe" -c "import pdf2docx" >nul 2>nul
 if not errorlevel 1 set "PDF_FLAGS=--collect-all pdf2docx"
 echo [Mobius] Building standalone Windows EXE...
-".venv\Scripts\python.exe" -m PyInstaller --noconfirm --clean --onefile --windowed --name Mobius --icon "assets\mobius.ico" --add-data "assets\mobius.ico;assets" %PDF_FLAGS% --collect-all pymupdf --collect-all faster_whisper --collect-all ctranslate2 --hidden-import sounddevice --hidden-import win32com.client --hidden-import winrt.windows.media.control app.py
+".venv\Scripts\python.exe" -m PyInstaller --noconfirm --clean --onefile --windowed --name Mobius --icon "assets\mobius.ico" --add-data "assets\mobius.ico;assets" %PDF_FLAGS% --exclude-module PySide6.QtWebEngineWidgets --exclude-module PySide6.QtWebEngineCore --exclude-module PySide6.QtPdfWidgets --collect-all pymupdf --collect-all faster_whisper --collect-all ctranslate2 --hidden-import sounddevice --hidden-import win32com.client --hidden-import winrt.windows.media.control app.py
 if errorlevel 1 (
     echo Build failed. See the error above; the source app is not affected.
     pause
