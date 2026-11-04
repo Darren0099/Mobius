@@ -23,6 +23,8 @@ from .assistant_core import execute, resolve_document, Intent
 from .local_ai import interpret
 from .desktop_visibility import foreground_class, should_show, left_mouse_down
 from .hotkey import RecoveryHotkey
+from .voice_commands import should_handle_utterance, normalized_utterance
+from .voice_feedback import SpeechFeedback, english_confirmation
 
 COLORS = {
     'bg': '#141414', 'tile': '#222322', 'tile_hover': '#303328', 'line': '#454941',
@@ -316,7 +318,10 @@ class MobiusWindow(QWidget):
         self.thread = self.worker = None
         self.voice_thread = self.voice_worker = None
         self._interpret_thread = self._interpret_worker = None
-        self.listening_enabled = True  # explicitly requested always-on voice
+        self.listening_enabled = True  # always listening, with no wake word required
+        self.feedback = SpeechFeedback()  # local English Windows SAPI, background thread
+        self._last_voice_phrase = ''
+        self._last_voice_at = 0.0
         self.setStyleSheet(self._style())
 
         self.header = DropHeader(self)
@@ -354,7 +359,7 @@ class MobiusWindow(QWidget):
         top_row.addWidget(self.folder_button)
         panel_layout.addLayout(top_row)
 
-        self.assistant_response = QLabel('Cukup ucapkan “Mobius” diikuti perintahmu. Tidak perlu membuka mode apa pun.')
+        self.assistant_response = QLabel('Langsung ucapkan “buka kalkulator” atau “cari resep rendang di browser”. Tanpa wake word.')
         self.assistant_response.setObjectName('assistantResponse')
         self.assistant_response.setWordWrap(True)
         self.assistant_response.setMinimumHeight(48)
@@ -738,6 +743,8 @@ class MobiusWindow(QWidget):
     def _success(self, result):
         self._last_results = result
         self._notify(f'Selesai! {len(result.files)} file tersimpan di {self.destination}', mood='happy')
+        if result.files:
+            self.feedback.speak("Okay, your file conversion is complete.")
 
     def _failure(self, msg):
         self._notify('Gagal: ' + msg[:180], mood='warning')
@@ -820,7 +827,19 @@ class MobiusWindow(QWidget):
             except Exception as exc:
                 self._notify(str(exc))
             return
-        self._notify(intent.detail if intent.kind == 'chat' else execute(intent, dropped=list(self.pending), output=self.destination))
+        if intent.kind == 'chat':
+            self._notify(intent.detail)
+            return
+        try:
+            result = execute(intent, dropped=list(self.pending), output=self.destination)
+        except Exception as exc:
+            self._notify(f'Perintah gagal: {exc}', mood='warning')
+            return
+        self._notify(result)
+        spoken = english_confirmation(intent, result)
+        if spoken:
+            self.eyes.set_mode('happy', temporary_ms=1800)
+            self.feedback.speak(spoken)
 
     def _interpret_finished(self):
         self._interpret_thread = self._interpret_worker = None
@@ -848,14 +867,15 @@ class MobiusWindow(QWidget):
         if not self.listening_enabled or self.voice_thread is not None:
             return
         from .voice import VoiceWorker
-        self.assistant_status.setText('●  MENDENGARKAN · WAKE WORD: MOBIUS')
+        self.assistant_status.setText('●  MENDENGARKAN · TANPA WAKE WORD')
         self._voice_failed = False
         self.eyes.set_mode('listening')
         self.voice_thread = QThread(self)
-        self.voice_worker = VoiceWorker(continuous=True)
+        self.voice_worker = VoiceWorker(continuous=True, suppress_event=self.feedback.playing)
         self.voice_worker.moveToThread(self.voice_thread)
         self.voice_thread.started.connect(self.voice_worker.run)
         self.voice_worker.success.connect(self._voice_success)
+        self.voice_worker.status.connect(self._voice_status)
         self.voice_worker.failure.connect(self._voice_failure)
         self.voice_worker.finished.connect(self.voice_thread.quit)
         self.voice_worker.finished.connect(self.voice_worker.deleteLater)
@@ -863,8 +883,22 @@ class MobiusWindow(QWidget):
         self.voice_thread.finished.connect(self._voice_finished)
         self.voice_thread.start()
 
+    def _voice_status(self, message):
+        if self._interpret_thread is None:
+            self.assistant_status.setText('●  ' + message[:115])
+
     def _voice_success(self, phrase):
-        self.on_phrase(phrase)
+        # Never require "Mobius" before a spoken instruction. Ignore stray
+        # ambient speech and repeated Whisper segments from the same utterance.
+        if not should_handle_utterance(phrase):
+            return
+        normalized = normalized_utterance(phrase)
+        now = time.monotonic()
+        if normalized == self._last_voice_phrase and now - self._last_voice_at < 3.5:
+            return
+        self._last_voice_phrase = normalized
+        self._last_voice_at = now
+        self.on_phrase(phrase, require_wake=False)
 
     def _voice_failure(self, message):
         self._voice_failed = True
@@ -882,6 +916,7 @@ class MobiusWindow(QWidget):
             QTimer.singleShot(400, self.start_voice)
 
     def stop_voice(self):
+        self.feedback.stop()
         self._recovery_hotkey.stop()
         self.listening_enabled = False
         if self.voice_worker is not None:
