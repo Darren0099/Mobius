@@ -14,7 +14,11 @@ STARTERS = frozenset({
     'gabung', 'pisah', 'kompres', 'matikan', 'shutdown', 'batalkan', 'batal',
     'jelaskan', 'ceritakan', 'terangkan', 'tunjukkan', 'beritahu',
     'apa', 'apakah', 'bagaimana', 'gimana', 'kenapa', 'mengapa', 'siapa',
-    'kapan', 'dimana', 'di', 'bisakah', 'bisa',
+    'kapan', 'dimana', 'di', 'bisakah', 'bisa', 'pause', 'jeda',
+    'stop', 'hentikan', 'lanjutkan', 'lanjut', 'resume', 'next',
+    'previous', 'sebelumnya', 'skip', 'lewati', 'mulai', 'start',
+    'aktifkan', 'reset', 'ulang', 'minum', 'catat', 'tambah', 'tampilkan',
+    'lihat', 'show',
 })
 FILLERS = frozenset({'tolong', 'bantu', 'coba', 'please', 'dong', 'deh', 'hei', 'hey', 'halo', 'hai', 'oke', 'ok'})
 NEGATIONS = ('jangan ', 'ga usah ', 'gak usah ', 'nggak usah ', 'tidak usah ', "don't ", 'do not ')
