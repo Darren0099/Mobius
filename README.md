@@ -1,4 +1,4 @@
-# MOBIUS v0.3 · Ambient Offline Assistant + File Studio
+# MOBIUS v0.6 · Ambient Offline Assistant + File Studio
 
 **Mobius** adalah asisten Windows 10/11 yang mendengarkan perintah setelah startup dan menyatukan konversi dokumen serta asisten suara dalam **satu layar**. Bar kecil berwarna lime hanya terlihat saat desktop kosong/aktif. Saat browser atau aplikasi lain sedang aktif, bar disembunyikan, tetapi pendengar suara tetap berjalan. Tidak ada layanan cloud yang menerima rekaman suara atau file.
 
@@ -32,7 +32,7 @@ git pull --ff-only origin main
    ```
 
    Atau klik `install-ai-windows.bat` sesudah memasang Ollama. Pastikan Ollama berjalan di background saat Mobius digunakan. Model diunduh **satu kali** dan diproses lokal di laptop. Tidak diperlukan API key.
-3. Jalankan ulang Mobius dengan `./run-windows.bat`. Mobius **langsung mendengarkan** (tanpa menekan tombol dan tanpa masuk mode). Ucapkan **"Mobius"** di awal kalimat sebagai wake word: `"Mobius, bukain kalkulator dong"`, `"Mobius, coba cari cara bikin portfolio React"`, `"Mobius, menurut kamu kenapa laptop sering panas?"`.
+3. Jalankan ulang Mobius dengan `./run-windows.bat`. Mobius **langsung mendengarkan** tanpa membuka mode atau mengucapkan kata pemicu. Contoh: `"buka kalkulator"`, `"bukain kalkulator dong"`, dan `"cari resep rendang di browser"`.
 
 **Memahami suara ≠ memahami maksud.** Whisper mentranskripsi audio; Qwen melalui Ollama memetakan bahasa informal ke tindakan yang diizinkan dan menjawab pertanyaan umum. Jika Ollama belum dipasang, perintah yang cocok dengan parser tetap berfungsi tetapi fleksibilitasnya lebih terbatas. Penggunaan pertama membutuhkan internet untuk mengunduh Python dependencies, model Whisper dan Qwen.
 
@@ -166,3 +166,7 @@ Previously downloaded Whisper models remain at %USERPROFILE%\.mobius\models. You
 Check Windows Settings > Privacy & security > Microphone, and enable microphone access for desktop apps. Select an English SAPI voice under Windows language/speech settings if English speech is unavailable.
 
 GitHub Actions runs mocked command tests. Actual microphone sensitivity and speaker playback must still be validated on your Windows laptop.
+
+### Tes mikrofon mandiri v0.6
+
+Jalankan `./test-voice-windows.bat` dari folder repository GitHub. Script akan merekam 5 detik untuk pengujian, menampilkan RMS serta transkrip Whisper, mendeteksi intent, lalu mencoba mengucapkan satu kalimat English melalui SAPI; **tidak mengeksekusi perintah komputer**. Jika mikrofon tidak menerima 16 kHz, aplikasi mencoba sample rate perangkat (misalnya 44,1 atau 48 kHz) dan melakukan resampling lokal ke 16 kHz. Tidak ada rekaman audio yang disimpan ke disk.
