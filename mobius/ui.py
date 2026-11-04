@@ -508,6 +508,8 @@ class MobiusWindow(QWidget):
         #quickTrack { color: #F5FFF7; font-size: 13px; font-weight: 700; }
         #quickClock { color: #C7FF10; font-size: 37px; font-weight: 900; }
         #quickHint { color: #A7C9B4; font-size: 10px; }
+        #lyricLeft { background: #123529; border: 1px solid #44774F; border-radius: 12px; }
+        #lyricLive { color: #D8FFD0; font-size: 15px; font-weight: 750; }
         #quickLyrics { background: #0C1715; color: #E6FFEF; border: 1px solid #38644B; border-radius: 10px; }
         #quickLyrics::item:selected { background: #336C45; color: #F7FFE6; }
         #quickButton { background: #213D2F; color: #DDF7E4; border: 1px solid #35684B; border-radius: 10px; }
