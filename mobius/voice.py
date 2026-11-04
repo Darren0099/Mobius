@@ -21,6 +21,36 @@ def voice_model_dir() -> Path:
                                str(Path.home() / ".mobius" / "models")))
 
 
+def microphone_input_config(sd):
+    """Prefer 16kHz input; fall back to hardware's native sampling rate."""
+    configured = os.environ.get('MOBIUS_MIC_DEVICE', '').strip()
+    device = int(configured) if configured.isdecimal() else (configured or None)
+    try:
+        sd.check_input_settings(device=device, samplerate=16000, channels=1,
+                                dtype='float32')
+        return device, 16000
+    except Exception:
+        details = sd.query_devices(device=device, kind='input')
+        native_rate = int(round(float(details['default_samplerate'])))
+        if native_rate < 16000 or native_rate > 192000:
+            raise ValueError('Sample rate mikrofon tidak didukung: ' + str(native_rate))
+        sd.check_input_settings(device=device, samplerate=native_rate,
+                                channels=1, dtype='float32')
+        return device, native_rate
+
+
+def audio_for_whisper(samples, original_rate, np):
+    """Resample locally to 16kHz without adding an extra dependency."""
+    if original_rate == 16000:
+        return samples.astype(np.float32)
+    if original_rate <= 0 or len(samples) == 0:
+        return np.asarray([], dtype=np.float32)
+    count = max(1, int(round(len(samples) * 16000 / original_rate)))
+    source_times = np.arange(len(samples), dtype=np.float64) / original_rate
+    target_times = np.arange(count, dtype=np.float64) / 16000
+    return np.interp(target_times, source_times, samples).astype(np.float32)
+
+
 class VoiceWorker(QObject):
     success = Signal(str)
     failure = Signal(str)
@@ -77,14 +107,16 @@ class VoiceWorker(QObject):
             model = WhisperModel(model_name, device="cpu", compute_type="int8",
                                  download_root=str(voice_model_dir()),
                                  local_files_only=True)
-            self.status.emit("Mendengarkan perintah...")
+            input_device, input_rate = microphone_input_config(sd)
+            self.status.emit(f"Mendengarkan perintah... (mikrofon {input_rate} Hz)")
 
             if not self.continuous:
-                audio = sd.rec(7 * self.SAMPLE_RATE, samplerate=self.SAMPLE_RATE,
-                               channels=1, dtype="float32")
+                audio = sd.rec(7 * input_rate, samplerate=input_rate,
+                               channels=1, dtype="float32", device=input_device)
                 sd.wait()
                 if not self._stop.is_set():
-                    self._transcribe(model, audio.ravel().astype(np.float32), np)
+                    samples = audio_for_whisper(audio.ravel(), input_rate, np)
+                    self._transcribe(model, samples, np)
                 return
 
             gate = AdaptiveSpeechGate()
@@ -112,9 +144,9 @@ class VoiceWorker(QObject):
             speech_blocks = 0
             quiet_blocks = 0
 
-            with sd.InputStream(samplerate=self.SAMPLE_RATE, channels=1,
-                                dtype="float32", blocksize=self.BLOCK_SAMPLES,
-                                callback=on_audio):
+            with sd.InputStream(samplerate=input_rate, channels=1,
+                                dtype="float32", blocksize=int(input_rate / 10),
+                                callback=on_audio, device=input_device):
                 while not self._stop.is_set():
                     try:
                         block = chunks.get(timeout=0.2)
@@ -149,7 +181,8 @@ class VoiceWorker(QObject):
                             or len(phrase_blocks) >= self.MAX_BLOCKS):
                         if speech_blocks >= 2:  # short commands may be ~0.3 seconds
                             audio = np.concatenate(phrase_blocks).astype(np.float32)
-                            self._transcribe(model, audio, np)
+                            samples = audio_for_whisper(audio, input_rate, np)
+                            self._transcribe(model, samples, np)
                         phrase_blocks = []
                         preroll.clear()
                         speech_blocks = 0
