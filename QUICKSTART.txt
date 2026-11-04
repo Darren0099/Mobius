@@ -1,4 +1,4 @@
-MOBIUS v0.8.3 — COMPACT MONOCHROME LIVING ISLAND (Windows 10/11)
+MOBIUS SOURCE — RADIAL FILE STUDIO AND PERSISTENT DROP TIP (Windows 10/11)
 
 A. PULL THE UPDATE
 1. Quit the older Mobius instance using its system-tray icon.
@@ -52,3 +52,13 @@ E. MONOCHROME DESIGN (v0.8.3)
 - Bright-white text with clear contrast; restrained graphite base.
 - Real custom-drawn Qt vector icons, not emoji or remote favicon fonts.
 - Clean Segoe UI Variable / Segoe UI typography; subdued borders and motion.
+
+F. RADIAL FILE STUDIO (SOURCE-ONLY REVISION)
+- The top edge retains a visible line even when Chrome/VS Code is foreground.
+- Drag a PDF, Word or image from Explorer onto the line.
+- A separate nine-sector radial wheel appears at screen center.
+- Choose a compatible sector; dimmed sectors are disabled.
+- Drop directly onto a compatible sector or click the center to select files.
+- Press Escape or click outside the wheel to close; robot eyes stay at top.
+- New almond-shaped eyes have white eyelids and dark moving pupils.
+- No installer or EXE will be generated until explicitly approved.
