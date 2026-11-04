@@ -6,8 +6,9 @@ navigate without mixing File Studio into the music/timer UI.
 """
 from __future__ import annotations
 
-from PySide6.QtCore import QEvent, QEasingCurve, QPoint, QParallelAnimationGroup, QPropertyAnimation, Qt, Signal
+from PySide6.QtCore import QEvent, QEasingCurve, QPoint, QSize, QParallelAnimationGroup, QPropertyAnimation, Qt, Signal
 from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
+from .vector_icons import icon, attach
 
 
 class IslandCarousel(QWidget):
@@ -28,8 +29,12 @@ class IslandCarousel(QWidget):
         layout.setSpacing(5)
         top = QHBoxLayout()
         top.setContentsMargins(4, 0, 4, 0)
-        self.previous = QPushButton("‹")
-        self.next_button = QPushButton("›")
+        self.previous = QPushButton("")
+        self.next_button = QPushButton("")
+        attach(self.previous, 'left', size=17)
+        attach(self.next_button, 'right', size=17)
+        self.previous.setToolTip("Previous feature")
+        self.next_button.setToolTip("Next feature")
         for b in (self.previous, self.next_button):
             b.setObjectName("carouselArrow")
             b.setFixedSize(30, 28)
@@ -85,10 +90,12 @@ class IslandCarousel(QWidget):
         self.accents.append(accent)
         self.heights.append(max(125, min(330, int(content_height))))
         idx = len(self.pages) - 1
-        dot = QPushButton("●")
+        dot = QPushButton("")
         dot.setObjectName("carouselDot")
         dot.setToolTip(title)
         dot.setFixedSize(16, 16)
+        dot.setIcon(icon("indicator", 9, "#777780"))
+        dot.setIconSize(QSize(9, 9))
         dot.setCursor(Qt.CursorShape.PointingHandCursor)
         dot.clicked.connect(lambda _=False, target=idx: self.go_to(target))
         self.dots_row.insertWidget(self.dots_row.count() - 1, dot)
@@ -117,15 +124,17 @@ class IslandCarousel(QWidget):
             return
         accent = self.accents[self._index]
         self.title.setText(self.labels[self._index])
-        self.title.setStyleSheet(f"color: {accent}; font-size: 17px; font-weight: 800;")
+        self.title.setStyleSheet(
+            "color: #FAFAFC; font-family: 'Segoe UI Variable', 'Segoe UI'; "
+            "font-size: 13px; font-weight: 650;"
+        )
         self.index_label.setText(f"{self._index + 1} / {len(self.pages)}")
         self.previous.setEnabled(self._index > 0)
         self.next_button.setEnabled(self._index < len(self.pages) - 1)
         for idx, dot in enumerate(self.dots):
-            dot.setStyleSheet(
-                f"color: {accent if idx == self._index else '#50545F'}; "
-                "border: 0; background: transparent; font-size: 15px;"
-            )
+            dot.setStyleSheet("border: none; background: transparent; padding: 0;")
+            dot.setIcon(icon("indicator", 9,
+                            "#FFFFFF" if idx == self._index else "#57575E"))
         self.page_changed.emit(self._index, self.labels[self._index])
 
     def _finish(self):
