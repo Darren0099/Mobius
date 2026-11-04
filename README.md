@@ -309,3 +309,19 @@ git pull --ff-only origin main
 Debug mode forces the expanded panel to remain above PowerShell so you can validate the smaller layout before normal use. Once verified, quit the debug instance from the tray and use `.\run-windows.bat` for desktop-only mode. Your existing `.venv`, Whisper cache and Ollama models are not deleted.
 
 Run automated tests with `.\.venv\Scripts\python.exe -m pytest -q tests` if pytest is installed. Real-world mouse timings, DPI scaling, and visual animations must also be checked on a Windows desktop.
+
+## v0.8.3 — Precision monochrome design / no emoji
+
+The compact island is now **124×38 Qt logical pixels** with expressive white robot eyes. Battery, clock, music and timer glance widths are measured from their actual text content and capped at **240 logical pixels** (previously a rigid 370 px). The full six-page carousel is now **408 logical pixels wide**, with internal File Studio scrolling retained. Windows display scaling can make these look larger in physical pixels.
+
+The UI uses **bright-white Segoe UI Variable text on near-black graphite**, subtle monochrome borders, reduced font sizes and restrained geometry morphing. There are no neon-green gradients or emoji-based controls. Icons for charging, time, music, lyrics, microphone, document conversion, folders, navigation and water are drawn as consistent local vectors using Qt Painter; they do not require web fonts, CDN requests, or added assets. The design takes general inspiration from the clean typography/motion of [Blurr_ Animation](https://dribbble.com/shots/12209806-Blurr-Animation), rather than copying its artwork.
+
+No changes are required to Whisper/Ollama models. Quit the old instance from the system tray and update:
+
+```powershell
+cd "$HOME\Documents\Mobius-GitHub"
+git pull --ff-only origin main
+.\run-debug-windows.bat
+```
+
+Debug mode keeps the panel visible over PowerShell for inspection; use `.\run-windows.bat` for normal desktop-only behavior. Optional .exe and .iss installer packaging remain available through GitHub Actions.
