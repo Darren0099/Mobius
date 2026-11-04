@@ -104,3 +104,38 @@ def test_ui_receives_voice_without_mobius_and_suppresses_speaker_echo():
     assert "self.on_phrase(phrase, require_wake=False)" in source
     assert "suppress_event=self.feedback.playing" in source
     assert "self.feedback.speak(spoken)" in source
+
+
+def test_native_microphone_sample_rate_fallback_and_resampling():
+    import numpy as np
+    from mobius.voice import microphone_input_config, audio_for_whisper
+
+    class FakeMicrophone:
+        def check_input_settings(self, **kwargs):
+            if kwargs['samplerate'] == 16000:
+                raise ValueError('Invalid sample rate')
+        def query_devices(self, device=None, kind=None):
+            return {'default_samplerate': 48000.0}
+
+    device, rate = microphone_input_config(FakeMicrophone())
+    assert device is None
+    assert rate == 48000
+    samples = np.sin(np.linspace(0, 2 * np.pi * 100, 4800)).astype(np.float32)
+    resampled = audio_for_whisper(samples, rate, np)
+    assert len(resampled) == 1600
+    assert resampled.dtype == np.float32
+    assert np.isfinite(resampled).all()
+
+
+def test_direct_16khz_microphone_keeps_samples_unchanged():
+    import numpy as np
+    from mobius.voice import microphone_input_config, audio_for_whisper
+
+    class FakeMicrophone:
+        def check_input_settings(self, **kwargs):
+            assert kwargs['samplerate'] == 16000
+
+    device, rate = microphone_input_config(FakeMicrophone())
+    samples = np.ones(1600, dtype=np.float32)
+    assert rate == 16000
+    assert np.array_equal(audio_for_whisper(samples, rate, np), samples)
