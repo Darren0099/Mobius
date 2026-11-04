@@ -1,4 +1,4 @@
-# Lean packaging: only Qt Essentials; excludes unused WebEngine/PDF widgets.
+# Mobius v0.8 dark carousel + glance release; trigger build from verified source.
 name: Build Mobius Windows EXE
 
 on:
