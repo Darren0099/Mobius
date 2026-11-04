@@ -199,7 +199,7 @@ Voice examples: 'pause musik', 'lanjutkan lagu', 'skip lagu berikutnya'. Music c
 ### Synced lyrics
 
 - Click **Lyrics → Open local .LRC** for offline time-coded lyrics next to your track; select a line to seek if your media player supports seeking.
-- Click **Lyrics → Find lyrics online** to explicitly look up the playing track on **LRCLIB**. That action sends the track title, artist, and approximate length (song metadata only) to LRCLIB. No account or microphone audio is sent. This feature needs internet. Some tracks lack synced lyrics.
+- Click **Lyrics → Find lyrics online** to explicitly look up the playing track on **LRCLIB**. That action sends the track title and artist (song metadata only; duration checked locally) to LRCLIB. No account or microphone audio is sent. This feature needs internet. Some tracks lack synced lyrics.
 - No copyrighted lyrics are bundled into Mobius. Only user-selected files or responses returned through LRCLIB are displayed.
 
 ### Focus timer (Pomodoro)
