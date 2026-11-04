@@ -14,7 +14,7 @@ from PySide6.QtCore import (QEasingCurve, QObject, QPoint, QRect, Qt, QPropertyA
 from PySide6.QtGui import (QBrush, QColor, QCursor, QDesktopServices, QFont, QGradient,
                             QIcon, QLinearGradient, QPainter, QPainterPath, QPen, QRadialGradient)
 from PySide6.QtWidgets import (QApplication, QComboBox, QFileDialog, QFrame, QGridLayout,
-                                QHBoxLayout, QLabel, QMainWindow, QMenu, QPushButton,
+                                QHBoxLayout, QLabel, QMainWindow, QMenu, QPushButton, QScrollArea,
                                 QSystemTrayIcon, QVBoxLayout, QWidget, QTabWidget, QLineEdit, QMessageBox, QInputDialog)
 from PySide6.QtCore import QUrl
 
@@ -238,16 +238,16 @@ class ToolTile(QFrame):
         self.setProperty('selected', False)
         self.setAcceptDrops(True)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.setFixedHeight(74)
+        self.setFixedHeight(55)
         self.setToolTip('Klik untuk memilih file, atau drop file langsung di sini')
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(13, 10, 10, 10)
-        layout.setSpacing(12)
+        layout.setContentsMargins(7, 4, 6, 4)
+        layout.setSpacing(6)
         self.icon = QLabel(ICONS[index])
         self.icon.setObjectName('toolIcon')
         self.icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.icon.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
-        self.icon.setFixedSize(34, 40)
+        self.icon.setFixedSize(27, 31)
         layout.addWidget(self.icon)
         block = QVBoxLayout()
         block.setSpacing(3)
@@ -342,8 +342,8 @@ class InterpretWorker(QObject):
 
 class MobiusWindow(QWidget):
     """Unified always-listening assistant and drag-drop file tool island."""
-    COMPACT_W, COMPACT_H = 170, 46
-    OPEN_W, OPEN_H = 838, 510
+    COMPACT_W, COMPACT_H = 158, 42
+    OPEN_W, OPEN_H = 540, 255  # narrow island; tall tools live in internal scroll areas
 
     def __init__(self):
         super().__init__()
@@ -462,13 +462,23 @@ class MobiusWindow(QWidget):
         title_row.addWidget(self.selected_file)
         file_layout.addLayout(title_row)
         grid = QGridLayout()
-        grid.setSpacing(8)
+        grid.setContentsMargins(5, 4, 5, 4)
+        grid.setSpacing(5)
         self.tiles = {}
         for i, spec in enumerate(OPERATIONS):
             tile = ToolTile(self, spec.key, i)
             self.tiles[spec.key] = tile
-            grid.addWidget(tile, i // 3, i % 3)
-        file_layout.addLayout(grid)
+            grid.addWidget(tile, i // 2, i % 2)
+        # Scroll only the conversion tools, keeping output controls visible.
+        self.tools_inner = QWidget(self.file_page)
+        self.tools_inner.setLayout(grid)
+        self.tools_scroller = QScrollArea(self.file_page)
+        self.tools_scroller.setObjectName('toolsScroller')
+        self.tools_scroller.setWidgetResizable(True)
+        self.tools_scroller.setFrameShape(QFrame.Shape.NoFrame)
+        self.tools_scroller.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.tools_scroller.setWidget(self.tools_inner)
+        file_layout.addWidget(self.tools_scroller, 1)
         bottom = QHBoxLayout()
         self.format_label = QLabel('OUTPUT')
         self.format_label.setObjectName('sectionLabel')
@@ -498,16 +508,16 @@ class MobiusWindow(QWidget):
             ("Focus Timer", "#F0B56D"),
             ("Water Reminder", "#4BBEFF"),
         )
-        for (label, accent), height in zip(self.feature_pages, (198, 260, 192, 305)):
+        for (label, accent), height in zip(self.feature_pages, (145, 198, 158, 230)):
             page = self.quick.pages.widget(0)
             if page is None:
                 raise RuntimeError("Quick feature widget is missing")
             self.quick.pages.removeWidget(page)
             self.carousel.add_page(page, label, accent, content_height=height)
         self.carousel.add_page(self.file_page, "File Studio", "#E5E7EB",
-                               content_height=390)
+                               content_height=238)
         self.carousel.add_page(self.assistant_page, "Assistant", "#A6EE74",
-                               content_height=225)
+                               content_height=186)
         self.carousel.page_changed.connect(self._page_selected)
         panel_layout.addWidget(self.carousel)
         self.quick.hide()
@@ -580,7 +590,10 @@ class MobiusWindow(QWidget):
             background: #141820; border: 1px solid #303746; border-radius: 12px;
             font-size: 12px; color: #E8ECF2; padding: 10px;
         }
-        #toolTile { background: #16171C; border: 1px solid #363842; border-radius: 13px; }
+        #toolsScroller, #toolsScroller > QWidget { background: transparent; border: 0; }
+        #toolsScroller QScrollBar:vertical { background: #101116; width: 6px; }
+        #toolsScroller QScrollBar::handle:vertical { background: #454957; border-radius: 3px; }
+        #toolTile { background: #16171C; border: 1px solid #363842; border-radius: 11px; }
         #toolTile:hover, #toolTile[selected='true'] {
             background: #292B34; border: 1px solid #E1E3E8;
         }
@@ -699,8 +712,8 @@ class MobiusWindow(QWidget):
         self.setGeometry(self._rect(width, height))
 
     def resizeEvent(self, event):
-        self.header.setGeometry(6, 2, self.width()-12, 38)
-        self.panel.setGeometry(10, 42, self.width()-20, max(0, self.height()-50))
+        self.header.setGeometry(5, 1, max(1, self.width()-10), 36)
+        self.panel.setGeometry(9, 39, max(1, self.width()-18), max(0, self.height()-45))
         super().resizeEvent(event)
 
     def paintEvent(self, event):
@@ -791,7 +804,8 @@ class MobiusWindow(QWidget):
                 self._animation.start()
 
     def _expanded_target_height(self) -> int:
-        return 150 + self.carousel.current_height
+        # Header + carousel title/indicators + narrow internal margins.
+        return 87 + self.carousel.current_height
 
     def _page_selected(self, index: int, title: str):
         """Smoothly adapt island height when a different carousel page opens."""
