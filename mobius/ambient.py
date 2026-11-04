@@ -22,16 +22,16 @@ class PowerState:
         if self.percent is None:
             return "Battery unavailable"
         if self.plugged is True:
-            return f"⚡ {self.percent}% · Charging"
+            return f"{self.percent}% Charging"
         if self.plugged is False:
-            return f"▰ {self.percent}% · On battery"
-        return f"▰ {self.percent}%"
+            return f"{self.percent}% Battery"
+        return f"{self.percent}%"
 
     @property
     def accent(self) -> str:
         if self.percent is not None and self.percent <= 15 and not self.plugged:
             return "#FF6C63"
-        return "#8BF570" if self.plugged else "#E6EAF0"
+        return "#F7F7F9"
 
 
 def read_windows_power() -> PowerState:
@@ -73,12 +73,12 @@ class GlanceController:
         self.duration = float(duration_seconds)
         self.kind = "eyes"
         self.message = ""
-        self.accent = "#E6EAF0"
+        self.accent = "#F7F7F9"
         self.until = 0.0
         self.next_at = start_now + self.interval
         self._round_robin = 0
 
-    def show(self, kind: str, message: str, now: float, accent: str = "#E6EAF0"):
+    def show(self, kind: str, message: str, now: float, accent: str = "#F7F7F9"):
         if not message:
             return
         self.kind = kind
