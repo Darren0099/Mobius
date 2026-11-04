@@ -68,10 +68,11 @@ class SpeechFeedback:
                 pass
 
     def _run(self):
-        import pythoncom
+        pythoncom = None
         voice = None
         initialized = False
         try:
+            import pythoncom
             pythoncom.CoInitialize()
             initialized = True
             import win32com.client
