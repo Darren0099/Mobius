@@ -1,4 +1,4 @@
-MOBIUS v0.8 — DARK CAROUSEL LIVING ISLAND (Windows 10/11)
+MOBIUS v0.8.2 — SMALL DARK LIVING ISLAND (Windows 10/11)
 
 A. PULL THE UPDATE
 1. Quit the older Mobius instance using its system-tray icon.
@@ -12,6 +12,11 @@ A. PULL THE UPDATE
    needed again for this visual update.
 
 B. DARK ISLAND AND CAROUSEL
+- Compact island: 158×42 logical pixels; expanded: max 540px wide.
+- Clicking anywhere outside the expanded panel closes it immediately.
+- Switching to Chrome or another app shrinks the island before hiding.
+- Point at the top-center 6-pixel edge for ~0.7 seconds to smoothly reveal it.
+- Music/Focus and other panels are short; File Studio scrolls internally.
 - Eyes remain the default when the desktop is active.
 - Every ~38 seconds a clock/battery/music/focus glance may appear for ~10 s.
   When unplugging or plugging in charging, the battery glance gets priority.
