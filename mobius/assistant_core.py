@@ -57,9 +57,13 @@ def clean(text: str) -> str:
 def parse_command(text: str) -> Intent:
     s = clean(text)
     s = re.sub(r'^(?:hei|hey|hai|halo|oke|ok)?\s*mobius\b[,:]?\s*', '', s).strip()
-    s = re.sub(r'^(?:tolong|bantu|silakan|coba)\s+', '', s)
+    # Wake word is optional. Normalize common informal speech.
+    s = re.sub(r'^(?:(?:tolong|bantu|silakan|coba|please|eh|hei|hey)\s+)+', '', s)
+    s = re.sub(r'^(buka|bukain|bukakan|nyalain|jalankan|cari|carikan|cariin)\s+(?:dong|deh|ya)\s+', r'\1 ', s)
     if not s:
-        return Intent('help', 'Katakan perintah setelah “Mobius”.')
+        return Intent('help', 'Ucapkan perintah seperti “buka kalkulator” atau “cari resep di browser”.')
+    if re.search(r'^(?:jangan|ga usah|gak usah|nggak usah|tidak usah|dont|do not)\b', s):
+        return Intent('help', 'Kalimat berupa larangan, tidak ada tindakan.')
     if re.search(r'\b(?:batalkan|batal|cancel|abort)\b.*\b(?:shutdown|mati|matikan|restart)\b', s) or re.search(r'\b(?:shutdown|mati|matikan)\b.*\b(?:batal|cancel)\b', s):
         return Intent('cancel_shutdown', 'Batalkan jadwal shutdown Windows.')
     if re.search(r'\b(?:matikan|shutdown|turn off)\b.*\b(?:laptop|komputer|pc|windows)\b', s):
@@ -74,15 +78,17 @@ def parse_command(text: str) -> Intent:
         return Intent('shutdown', f'Jadwalkan shutdown dalam {n} {match.group(2)}?', {'seconds': seconds}, True)
     if re.search(r'\b(?:putar|play|mainkan)\b.*\b(?:musik|lagu|music)\b', s):
         return Intent('music', 'Putar lagu lokal secara acak.')
-    if re.search(r'\b(?:cari|search|telusuri)\b', s) and not re.search(r'\b(?:file|berkas|dokumen|pdf)\b', s):
-        m = re.search(r'\b(?:cari|search|telusuri)\b\s+(?:di\s+(?:browser|google|internet)\s+)?(?:tentang\s+)?(.+)', s)
+    if re.search(r'\b(?:cari|carikan|cariin|search|telusuri|googling)\b', s) and not re.search(r'\b(?:file|berkas|dokumen|pdf)\b', s):
+        m = re.search(r'\b(?:cari|carikan|cariin|search|telusuri|googling)\b\s+(?:di\s+(?:browser|google|internet)\s+)?(?:tentang\s+)?(.+)', s)
         if m and m.group(1).strip():
-            query = m.group(1).strip()
-            return Intent('search', f'Cari “{query}” di browser?', {'query': query})
-    if re.search(r'\b(?:buka|open|jalankan)\b.*\b(?:browser|peramban)\b', s):
-        rest = re.search(r'\b(?:cari|search|telusuri)\b\s+(.+)', s)
+            query = re.sub(r'\s+(?:di|lewat|melalui|pakai|pake)\s+(?:browser|google|internet|chrome|edge)$', '', m.group(1).strip())
+            query = re.sub(r'\s+(?:dong|deh|ya|please)$', '', query).strip(' ,.')
+            if query:
+                return Intent('search', f'Cari “{query}” di browser?', {'query': query})
+    if re.search(r'^(?:buka|bukain|bukakan|open|jalankan)\b.*\b(?:browser|peramban)\b', s):
+        rest = re.search(r'\b(?:cari|carikan|cariin|search|telusuri)\b\s+(.+)', s)
         if rest:
-            q = rest.group(1)
+            q = re.sub(r'\s+(?:di|lewat|melalui)\s+(?:browser|google|internet)$', '', rest.group(1)).strip(' ,.')
             return Intent('search', f'Cari “{q}” di browser?', {'query': q})
         return Intent('browser', 'Buka browser bawaan.')
     # The form "ubah PDF nama menjadi img" includes the filename BETWEEN
@@ -101,9 +107,10 @@ def parse_command(text: str) -> Intent:
         m = re.search(r'\bpdf\b\s+(.+?)\s+(?:menjadi|ke|to|jadi)\s+(?:word|docx)\b', s)
         if m:
             return Intent('convert', f'Ubah PDF “{m.group(1)}” menjadi Word.', {'operation': 'pdf_word', 'filename': m.group(1)})
-    if re.search(r'\b(?:buka|open|jalankan)\b', s):
-        raw = re.sub(r'^.*?\b(?:buka|open|jalankan)\b\s+', '', s)
+    if re.search(r'^(?:buka|bukain|bukakan|open|jalankan|nyalain|nyalakan|launch)\b', s):
+        raw = re.sub(r'^(?:buka|bukain|bukakan|open|jalankan|nyalain|nyalakan|launch)\s+', '', s)
         raw = re.sub(r'^(?:aplikasi|app|program)\s+', '', raw)
+        raw = re.sub(r'\s+(?:dong|deh|ya|please)$', '', raw)
         targets = [re.sub(r'^(?:aplikasi|app)\s+', '', x.strip()) for x in re.split(r'\s*(?:,|\bdan\b|\bserta\b)\s*', raw) if x.strip()]
         unknown = [x for x in targets if x not in APP_NAMES]
         if unknown:
@@ -157,11 +164,12 @@ def execute(intent: Intent, *, dropped: list[Path] | None = None, output: Path |
                 return f'Aplikasi “{app}” tidak ditemukan. Periksa apakah sudah terpasang dan terdaftar di PATH.'
         return 'Aplikasi dibuka: ' + ', '.join(intent.args['apps'])
     if intent.kind == 'browser':
-        webbrowser.open('about:blank')
-        return 'Browser dibuka.'
+        opened = webbrowser.open('about:blank')
+        return 'Browser dibuka.' if opened else 'Tidak dapat membuka browser bawaan.'
     if intent.kind == 'search':
-        webbrowser.open('https://www.google.com/search?q=' + quote_plus(intent.args['query']))
-        return 'Pencarian dibuka di browser. Membutuhkan internet untuk hasil pencarian.'
+        opened = webbrowser.open('https://www.google.com/search?q=' + quote_plus(intent.args['query']))
+        return ('Pencarian dibuka di browser. Membutuhkan internet untuk hasil pencarian.'
+                if opened else 'Tidak dapat membuka pencarian di browser.')
     if intent.kind == 'music':
         folder = Path.home() / 'Music'
         tracks = [p for p in folder.rglob('*') if p.is_file() and p.suffix.lower() in {'.mp3', '.wav', '.flac', '.m4a', '.ogg'}] if folder.exists() else []
