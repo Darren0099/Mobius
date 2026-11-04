@@ -356,7 +356,7 @@ class MobiusWindow(QWidget):
         self._expanded = False
         self._busy = False
         self._drag_active = False
-        self._temporary_until = time.monotonic() + 12.0  # brief first-run preview; not a permanent overlay
+        self._temporary_until = time.monotonic() + 0.8  # do not cover browser tabs on launch
         self._drag_armed_at = None
         self._mouse_press_start = None
         self._voice_failed = False
@@ -367,6 +367,9 @@ class MobiusWindow(QWidget):
         # until the user can visually confirm the window is functioning.
         self._show_over_apps = os.environ.get('MOBIUS_DEBUG_VISIBLE') == '1'
         self._edge_hover_since = None
+        self._last_left_down = False
+        self._expanded_at = 0.0
+        self._hide_animating = False
         self.pending: list[Path] = []
         self.destination = Path.home() / 'Documents' / 'Mobius'
         self.destination.mkdir(parents=True, exist_ok=True)
@@ -527,6 +530,7 @@ class MobiusWindow(QWidget):
         self._animation = QPropertyAnimation(self, b'geometry', self)
         self._animation.setDuration(385)
         self._animation.setEasingCurve(QEasingCurve.Type.OutQuart)
+        self._animation.finished.connect(self._on_morph_finished)
         self._collapse_timer = QTimer(self)
         self._collapse_timer.setSingleShot(True)
         self._collapse_timer.timeout.connect(self._auto_collapse)
@@ -539,7 +543,7 @@ class MobiusWindow(QWidget):
         self._recoverable = self.tray is not None  # never hide without tray fallback
         self.visibility_timer = QTimer(self)
         self.visibility_timer.timeout.connect(self._sync_desktop_visibility)
-        self.visibility_timer.start(260)
+        self.visibility_timer.start(45)  # detect ordinary external mouse clicks (~22 Hz)
         self._set_idle_eye()
         self._island_pulse = QTimer(self)
         self._island_pulse.setInterval(1000)
@@ -851,15 +855,79 @@ class MobiusWindow(QWidget):
             self.tray.showMessage('Mobius', message[:170],
                                   QSystemTrayIcon.MessageIcon.Information, 3500)
 
+    def _on_morph_finished(self):
+        if self._hide_animating:
+            self._hide_animating = False
+            self.hide()
+            self._animation.setDuration(285)
+            self._animation.setEasingCurve(QEasingCurve.Type.OutQuart)
+
+    def _start_hide_morph(self):
+        """When another app comes to front, shrink to a tiny notch then hide."""
+        if self._hide_animating or not self.isVisible() or self._expanded:
+            return
+        self._hide_animating = True
+        self._animation.stop()
+        self._animation.setDuration(235)
+        self._animation.setEasingCurve(QEasingCurve.Type.InCubic)
+        self._animation.setStartValue(self.geometry())
+        self._animation.setEndValue(self._rect(42, 7))
+        self._animation.start()
+
+    def _start_reveal_morph(self):
+        """Reveal from the webcam edge as a compact island without focus stealing."""
+        if self._expanded:
+            self._hide_animating = False
+            self.show()
+            return
+        if self.isVisible() and not self._hide_animating:
+            return
+        was_hidden = not self.isVisible()
+        self._animation.stop()
+        self._hide_animating = False
+        self._animation.setDuration(285)
+        self._animation.setEasingCurve(QEasingCurve.Type.OutQuart)
+        if was_hidden:
+            self.setGeometry(self._rect(42, 7))
+            self.show()
+        self._animation.setStartValue(self.geometry())
+        self._animation.setEndValue(self._rect(self._compact_width, self.COMPACT_H))
+        self._animation.start()
+
+    def _dismiss_outside_click(self, cursor: QPoint, pressed: bool, now: float):
+        """Poll global Windows left-button press; don't swallow the user's click."""
+        fresh_press = pressed and not self._last_left_down
+        self._last_left_down = pressed
+        if not fresh_press or not self._expanded:
+            return False
+        if now - self._expanded_at < 0.25:
+            return False
+        if self.geometry().contains(cursor) or self._drag_active:
+            return False
+        # File dialogs and confirmation windows must stay interactive.
+        if QApplication.activeModalWidget() is not None or QApplication.activePopupWidget() is not None:
+            return False
+        self._manual_override = False
+        self._temporary_until = 0.0
+        self.set_expanded(False)
+        return True
+
     def set_expanded(self, expanded):
-        if self._expanded == expanded and self._animation.state() != QPropertyAnimation.State.Running:
+        if (self._expanded == expanded
+                and self._animation.state() != QPropertyAnimation.State.Running):
             return
         self._expanded = expanded
+        if expanded:
+            self._expanded_at = time.monotonic()
+        self._hide_animating = False
         self._animation.stop()
+        self._animation.setDuration(285)
+        self._animation.setEasingCurve(QEasingCurve.Type.OutQuart)
         self.panel.setVisible(expanded)
         self._animation.setStartValue(self.geometry())
-        self._animation.setEndValue(self._rect(self.OPEN_W if expanded else self._compact_width,
-                                               self._expanded_target_height() if expanded else self.COMPACT_H))
+        self._animation.setEndValue(
+            self._rect(self.OPEN_W if expanded else self._compact_width,
+                       self._expanded_target_height() if expanded else self.COMPACT_H))
         self._animation.start()
         self.update()
 
@@ -890,6 +958,9 @@ class MobiusWindow(QWidget):
         is_near_top = (abs(cursor.x() - (screen.x() + screen.width()/2)) < 155 and
                        screen.y() <= cursor.y() <= screen.y()+70)
         pressed = left_mouse_down()
+        # Global click-away dismissal, even if the user clicks the desktop,
+        # Chrome, VS Code or the taskbar rather than Mobius.
+        self._dismiss_outside_click(cursor, pressed, now)
         # Deliberate access when a browser is active: dwell at the very top
         # screen edge (not the normal tabs/title bar). Avoid instant popup.
         top_edge = (abs(cursor.x() - (screen.x() + screen.width() / 2)) <= 105
@@ -928,10 +999,11 @@ class MobiusWindow(QWidget):
                               recovery_available=self._recoverable,
                               pointer_over_island=(self.isVisible() and self.underMouse()),
                               pinned=self._show_over_apps)
-        if visible and not self.isVisible():
-            self.show()
-        elif not visible and self.isVisible():
-            self.hide()  # never collapse an intentionally opened panel here
+        if visible:
+            if not self.isVisible() or self._hide_animating:
+                self._start_reveal_morph()
+        elif self.isVisible():
+            self._start_hide_morph()
 
     def dragEnterEvent(self, event):
         self._drag_enter(event)
