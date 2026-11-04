@@ -632,41 +632,53 @@ class MobiusWindow(QWidget):
         super().resizeEvent(event)
 
     def paintEvent(self, event):
-        """A black camera notch with a subtle orange-to-red sunset backlight."""
+        """Seamless warm-black island: one continuous gradient, no color bands."""
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         w, h = self.width(), self.height()
         if self._tip_mode:
+            # Only a tiny black line is visible above foreground applications.
             p.setPen(Qt.PenStyle.NoPen)
             p.setBrush(QColor("#050506"))
             p.drawRoundedRect(QRect((w - 34) // 2, 1, 34, 4), 2, 2)
             p.end()
             return
-        r = min(22 if self._expanded else 17, max(2, h // 2))
+
+        radius = min(22 if self._expanded else 17, max(2, h // 2))
         shape = QPainterPath()
         shape.moveTo(0, 0)
         shape.lineTo(w, 0)
-        shape.lineTo(w, h-r)
-        shape.quadTo(w, h, w-r, h)
-        shape.lineTo(r, h)
-        shape.quadTo(0, h, 0, h-r)
+        shape.lineTo(w, h - radius)
+        shape.quadTo(w, h, w - radius, h)
+        shape.lineTo(radius, h)
+        shape.quadTo(0, h, 0, h - radius)
         shape.closeSubpath()
+
         p.save()
         p.setClipPath(shape)
-        p.fillPath(shape, QColor("#050507"))
-        # Horizontal spectrum: orange at left, warm red at right.
-        p.fillRect(QRect(0, max(0, h-35), w, min(h, 35)),
-                   QBrush(gradient(0, 0, w, 0)))
-        # Black above, transparent at bottom, for a smooth fade.
-        fade = QLinearGradient(0, max(0, h-38), 0, h)
-        fade.setColorAt(0, QColor("#050507"))
-        fade.setColorAt(.44, QColor("#050507"))
-        fade.setColorAt(1, QColor(5, 5, 7, 0))
-        p.fillRect(QRect(0, max(0, h-39), w, min(h, 39)), QBrush(fade))
-        p.fillRect(QRect(0, max(0, h-23), w, min(h, 23)),
-                   QBrush(island_glow(w * .5, h+3, max(100, w * .62))))
+        base = QLinearGradient(0, 0, 0, max(1, h))
+        base.setColorAt(0.0, QColor("#050506"))
+        base.setColorAt(0.30, QColor("#060607"))
+        base.setColorAt(0.57, QColor("#0F0A0A"))
+        base.setColorAt(0.74, QColor("#23110D"))
+        if self._expanded:
+            base.setColorAt(0.90, QColor("#3D1C13"))
+            base.setColorAt(1.00, QColor("#65301C"))
+        else:
+            base.setColorAt(0.90, QColor("#6F2B19"))
+            base.setColorAt(1.00, QColor("#CE582A"))
+        p.fillPath(shape, QBrush(base))
+
+        # A translucent centered glow melts into the same vertical gradient.
+        glow = QRadialGradient(w * .5, h + 6, max(80.0, w * .72))
+        glow.setColorAt(0.00, QColor(255, 131, 51, 64 if self._expanded else 92))
+        glow.setColorAt(0.43, QColor(243, 82, 43, 37 if self._expanded else 58))
+        glow.setColorAt(0.80, QColor(213, 54, 41, 10))
+        glow.setColorAt(1.00, QColor(213, 54, 41, 0))
+        p.fillPath(shape, QBrush(glow))
         p.restore()
-        p.setPen(QPen(QColor(255, 255, 255, 16), 1))
+
+        p.setPen(QPen(QColor(255, 255, 255, 13), 1))
         p.setBrush(Qt.BrushStyle.NoBrush)
         p.drawPath(shape)
         p.end()
