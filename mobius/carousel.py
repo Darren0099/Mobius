@@ -18,6 +18,7 @@ class IslandCarousel(QWidget):
         self.pages: list[QWidget] = []
         self.labels: list[str] = []
         self.accents: list[str] = []
+        self.heights: list[int] = []
         self._index = -1
         self._group = None
         self._gesture_start = None
@@ -48,8 +49,7 @@ class IslandCarousel(QWidget):
 
         self.viewport = QFrame(self)
         self.viewport.setObjectName("carouselViewport")
-        self.viewport.setMinimumHeight(363)
-        self.viewport.setMaximumHeight(363)
+        self.viewport.setFixedHeight(363)
         self.viewport.installEventFilter(self)
         layout.addWidget(self.viewport)
 
@@ -64,7 +64,12 @@ class IslandCarousel(QWidget):
     def current_index(self) -> int:
         return self._index
 
-    def add_page(self, widget: QWidget, title: str, accent: str):
+    @property
+    def current_height(self) -> int:
+        return self.heights[self._index] if self._index >= 0 else 363
+
+    def add_page(self, widget: QWidget, title: str, accent: str,
+                 content_height: int = 363):
         widget.setParent(self.viewport)
         widget.setObjectName({
             "Music": "musicPage",
@@ -78,6 +83,7 @@ class IslandCarousel(QWidget):
         self.pages.append(widget)
         self.labels.append(title)
         self.accents.append(accent)
+        self.heights.append(max(150, min(450, int(content_height))))
         idx = len(self.pages) - 1
         dot = QPushButton("●")
         dot.setObjectName("carouselDot")
@@ -89,6 +95,7 @@ class IslandCarousel(QWidget):
         self.dots.append(dot)
         if self._index < 0:
             self._index = 0
+            self.viewport.setFixedHeight(self.current_height)
             widget.show()
         self._update_navigation()
         self._position_current()
@@ -140,6 +147,7 @@ class IslandCarousel(QWidget):
         self._finish()
         old_index = self._index
         self._index = index
+        self.viewport.setFixedHeight(self.current_height)
         self._update_navigation()
 
         if not animated or not self.isVisible() or self.viewport.width() < 80:
