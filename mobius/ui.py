@@ -21,7 +21,7 @@ from PySide6.QtCore import QUrl
 from .engine import BY_KEY, OPERATIONS, IMAGES, PDF, WORD, Result, convert, supported
 from .assistant_core import execute, resolve_document, Intent
 from .local_ai import interpret
-from .desktop_visibility import foreground_class, should_show, left_mouse_down
+from .desktop_visibility import foreground_class, visibility_mode, DESKTOP_CLASSES, left_mouse_down
 from .hotkey import RecoveryHotkey
 from .voice_commands import should_handle_utterance, normalized_utterance
 from .voice_feedback import SpeechFeedback, english_confirmation
@@ -369,11 +369,14 @@ class MobiusWindow(QWidget):
         self._recoverable = False
         # Ordinary launches stay desktop-only. Debug mode pins the overlay
         # until the user can visually confirm the window is functioning.
-        self._show_over_apps = os.environ.get('MOBIUS_DEBUG_VISIBLE') == '1'
+        self._show_over_apps = False  # Never cover another app by default, even in debug mode
         self._edge_hover_since = None
         self._last_left_down = False
         self._expanded_at = 0.0
         self._hide_animating = False
+        self._tip_mode = False
+        self._last_foreground_class = None
+        self._suppress_hover_until_leave = False
         self.pending: list[Path] = []
         self.destination = Path.home() / 'Documents' / 'Mobius'
         self.destination.mkdir(parents=True, exist_ok=True)
@@ -674,7 +677,7 @@ class MobiusWindow(QWidget):
         self.tray.setToolTip('Mobius • selalu mendengarkan saat aktif')
         menu = QMenu()
         menu.addAction('Tampilkan Mobius  ·  Ctrl+Alt+M', self.force_expand)
-        self.pin_action = menu.addAction('Sematkan island di semua aplikasi')
+        self.pin_action = menu.addAction('Indikator tipis saat aplikasi aktif')
         self.pin_action.setCheckable(True)
         self.pin_action.setChecked(self._show_over_apps)
         self.pin_action.toggled.connect(self.set_show_over_apps)
@@ -706,7 +709,7 @@ class MobiusWindow(QWidget):
     def _show_context_menu(self, pos):
         menu = QMenu(self)
         menu.addAction('Buka Mobius', self.force_expand)
-        pin = menu.addAction('Sematkan island di semua aplikasi')
+        pin = menu.addAction('Indikator tipis saat aplikasi aktif')
         pin.setCheckable(True)
         pin.setChecked(self._show_over_apps)
         pin.toggled.connect(self.set_show_over_apps)
@@ -915,32 +918,52 @@ class MobiusWindow(QWidget):
             self._animation.setEasingCurve(QEasingCurve.Type.OutQuart)
 
     def _start_hide_morph(self):
-        """When another app comes to front, shrink to a tiny notch then hide."""
-        if self._hide_animating or not self.isVisible() or self._expanded:
+        """Shrink the compact island to the top edge before hiding entirely."""
+        if self._hide_animating or not self.isVisible():
             return
+        self._tip_mode = False
         self._hide_animating = True
         self._animation.stop()
         self._animation.setDuration(235)
         self._animation.setEasingCurve(QEasingCurve.Type.InCubic)
         self._animation.setStartValue(self.geometry())
-        self._animation.setEndValue(self._rect(42, 7))
+        self._animation.setEndValue(self._rect(36, 6))
+        self._animation.start()
+
+    def _start_tip_morph(self):
+        """Opt-in: leave a 36x6 hint, never a bar over Chrome's tabs."""
+        if self._tip_mode and not self._hide_animating:
+            return
+        self._animation.stop()
+        self._hide_animating = False
+        self._tip_mode = True
+        if not self.isVisible():
+            self.setGeometry(self._rect(36, 6))
+            self.show()
+            return
+        self._animation.setDuration(235)
+        self._animation.setEasingCurve(QEasingCurve.Type.InCubic)
+        self._animation.setStartValue(self.geometry())
+        self._animation.setEndValue(self._rect(36, 6))
         self._animation.start()
 
     def _start_reveal_morph(self):
-        """Reveal from the webcam edge as a compact island without focus stealing."""
+        """Reveal the compact eyes smoothly, including from the optional tip."""
         if self._expanded:
             self._hide_animating = False
+            self._tip_mode = False
             self.show()
             return
-        if self.isVisible() and not self._hide_animating:
+        if self.isVisible() and not self._hide_animating and not self._tip_mode:
             return
         was_hidden = not self.isVisible()
         self._animation.stop()
         self._hide_animating = False
+        self._tip_mode = False
         self._animation.setDuration(285)
         self._animation.setEasingCurve(QEasingCurve.Type.OutQuart)
         if was_hidden:
-            self.setGeometry(self._rect(42, 7))
+            self.setGeometry(self._rect(36, 6))
             self.show()
         self._animation.setStartValue(self.geometry())
         self._animation.setEndValue(self._rect(self._compact_width, self.COMPACT_H))
@@ -972,6 +995,7 @@ class MobiusWindow(QWidget):
         if expanded:
             self._expanded_at = time.monotonic()
         self._hide_animating = False
+        self._tip_mode = False
         self._animation.stop()
         self._animation.setDuration(285)
         self._animation.setEasingCurve(QEasingCurve.Type.OutQuart)
@@ -1005,37 +1029,54 @@ class MobiusWindow(QWidget):
             return
         now = time.monotonic()
         cls = foreground_class()
+        desktop = cls.casefold() in DESKTOP_CLASSES
         screen = self._screen()
         cursor = QCursor.pos()
-        is_near_top = (abs(cursor.x() - (screen.x() + screen.width()/2)) < 155 and
-                       screen.y() <= cursor.y() <= screen.y()+70)
         pressed = left_mouse_down()
-        # Global click-away dismissal, even if the user clicks the desktop,
-        # Chrome, VS Code or the taskbar rather than Mobius.
+        own_window = bool(self.isActiveWindow())
+
         self._dismiss_outside_click(cursor, pressed, now)
-        # Deliberate access when a browser is active: dwell at the very top
-        # screen edge (not the normal tabs/title bar). Avoid instant popup.
+
+        # Alt+Tab or switching to a new foreground application must clear
+        # previously opened panels. An old panel_open flag is not permission
+        # to cover browser tabs indefinitely.
+        changed_foreground = (self._last_foreground_class is not None
+                              and self._last_foreground_class != cls)
+        self._last_foreground_class = cls
+        if changed_foreground and not desktop and not own_window:
+            if self._expanded and QApplication.activeModalWidget() is None:
+                self._manual_override = False
+                self._temporary_until = 0.0
+                self.set_expanded(False)
+            self._suppress_hover_until_leave = self.geometry().contains(cursor)
+
+        if not self.geometry().contains(cursor):
+            self._suppress_hover_until_leave = False
+
         top_edge = (abs(cursor.x() - (screen.x() + screen.width() / 2)) <= 105
                     and screen.y() <= cursor.y() <= screen.y() + 6)
-        if top_edge and not pressed and not self.isVisible():
+        is_near_top = (abs(cursor.x() - (screen.x() + screen.width()/2)) < 155
+                       and screen.y() <= cursor.y() <= screen.y()+70)
+        if (top_edge and not pressed and not self._expanded
+                and (not self.isVisible() or self._tip_mode)):
             if self._edge_hover_since is None:
                 self._edge_hover_since = now
             elif now - self._edge_hover_since >= 0.7:
-                self._temporary_until = now + 5.0
+                self._temporary_until = now + 4.0
                 self._edge_hover_since = None
+                self._suppress_hover_until_leave = False
         else:
             self._edge_hover_since = None
+
         if pressed:
             if self._mouse_press_start is None:
                 self._mouse_press_start = cursor
             moved = (abs(cursor.x() - self._mouse_press_start.x()) +
                      abs(cursor.y() - self._mouse_press_start.y())) > 26
-            # Hold and move while dragging a file: reveal a temporary target.
-            # A normal stationary click on a browser tab does not reveal Mobius.
-            if is_near_top and moved and not self.isVisible():
+            if is_near_top and moved and (not self.isVisible() or self._tip_mode):
                 if self._drag_armed_at is None:
                     self._drag_armed_at = now
-                elif now - self._drag_armed_at >= .26:
+                elif now - self._drag_armed_at >= 0.26:
                     self._temporary_until = now + 2.4
             else:
                 self._drag_armed_at = None
@@ -1043,19 +1084,40 @@ class MobiusWindow(QWidget):
             self._drag_armed_at = None
             self._mouse_press_start = None
         if self._drag_active and pressed:
-            self._temporary_until = now + 2
-        own_window = bool(self.isActiveWindow())
-        visible = should_show(cls, temporary=(now < self._temporary_until),
-                              dragging_near_top=self._drag_active, own_foreground=own_window,
-                              panel_open=self._expanded or self._manual_override,
-                              recovery_available=self._recoverable,
-                              pointer_over_island=(self.isVisible() and self.underMouse()),
-                              pinned=self._show_over_apps)
-        if visible:
-            if not self.isVisible() or self._hide_animating:
+            self._temporary_until = now + 2.0
+
+        pointer_interacting = (self.isVisible() and self.underMouse()
+                               and not self._tip_mode
+                               and not self._suppress_hover_until_leave)
+        mode = visibility_mode(
+            cls,
+            temporary=(now < self._temporary_until),
+            dragging_near_top=self._drag_active,
+            own_foreground=own_window,
+            panel_open=self._expanded,
+            recovery_available=self._recoverable,
+            pointer_over_island=pointer_interacting,
+            pinned=self._show_over_apps,
+        )
+
+        if mode in ('hidden', 'tip'):
+            if self._expanded and QApplication.activeModalWidget() is None:
+                self._manual_override = False
+                self._temporary_until = 0.0
+                self.set_expanded(False)
+            if mode == 'tip':
+                self._start_tip_morph()
+            elif self.isVisible():
+                self._start_hide_morph()
+        elif mode == 'compact':
+            if self._expanded and not self._drag_active:
+                self._manual_override = False
+                self.set_expanded(False)
+            if not self.isVisible() or self._tip_mode or self._hide_animating:
                 self._start_reveal_morph()
-        elif self.isVisible():
-            self._start_hide_morph()
+        elif mode == 'expanded' and not self.isVisible():
+            # Only explicit hover/shortcut/interaction can bring this forward.
+            self._start_reveal_morph()
 
     def dragEnterEvent(self, event):
         self._drag_enter(event)
