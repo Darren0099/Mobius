@@ -730,16 +730,17 @@ class MobiusWindow(QWidget):
         """Cycle eyes → 10-second glance → eyes, without constant music text."""
         now = time.monotonic()
         power = read_windows_power()
+        battery_and_time = f"{power.label} · {clock_label().split('  ·  ')[0]}"
         if (self._last_power is not None and power.plugged is not None
                 and self._last_power.plugged is not None
                 and power.plugged != self._last_power.plugged):
             # Charger plugged/unplugged takes priority over the periodic cycle.
-            self._glance.show("battery", power.label, now, power.accent)
+            self._glance.show("battery", battery_and_time, now, power.accent)
         self._last_power = power
 
         options = [("clock", "◷  " + clock_label(), "#EAEAF0")]
         if power.percent is not None:
-            options.append(("battery", power.label, power.accent))
+            options.append(("battery", battery_and_time, power.accent))
 
         focus = self.quick.store.focus
         if focus.deadline is not None:
