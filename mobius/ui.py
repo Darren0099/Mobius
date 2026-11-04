@@ -1167,7 +1167,7 @@ class MobiusWindow(QWidget):
 
 def start():
     # This sequence distinguishes a Qt-native hang from a hidden desktop overlay.
-    from app import trace_startup
+    from .startup_trace import trace_startup
     trace_startup('Before QApplication constructor')
     app = QApplication(sys.argv)
     trace_startup('QApplication constructed')
