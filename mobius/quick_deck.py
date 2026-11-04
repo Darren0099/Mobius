@@ -311,7 +311,7 @@ class QuickDeck(QWidget):
         if not media.get("available") or not media.get("title"):
             self.lyric_hint.setText("Play a supported song before searching for lyrics")
             return
-        self.lyric_hint.setText("Looking up synced lyrics (title, artist, duration shared)...")
+        self.lyric_hint.setText("Looking up synced lyrics (title and artist sent; duration checked locally)...")
         title, artist, seconds = media["title"], media.get("artist", ""), media.get("duration", 0)
         future = self._pool.submit(search_lrclib, title, artist, seconds)
         def done(f):
