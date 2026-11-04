@@ -27,6 +27,8 @@ from .voice_commands import should_handle_utterance, normalized_utterance
 from .voice_feedback import SpeechFeedback, english_confirmation
 from .quick_deck import QuickDeck
 from .vector_icons import icon, attach
+from .robot_eyes import Eyes
+from .radial_studio import RadialStudio, eligible_files
 from .carousel import IslandCarousel
 from .ambient import GlanceController, read_windows_power, clock_label
 
@@ -48,162 +50,6 @@ def _paths(event) -> list[Path]:
             if p.is_file():
                 paths.append(p)
     return paths
-
-
-class Eyes(QWidget):
-    """Reactive robot personality: cursor-following pupils, moods and drowsiness.
-
-    At rest the avatar only redraws when its gaze/expression changes. Tired
-    expressions come after inactivity; a moving cursor wakes it up.
-    """
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setFixedSize(94, 26)
-        self._base_mood = 'listening'
-        self._flash_mood = None
-        self._hold_until = 0.0
-        self._expression = 'open'
-        self._next_refresh = 0.0
-        self._last_cursor = QCursor.pos()
-        self._last_activity = time.monotonic()
-        self._gaze = (0, 0)
-        self._timer = QTimer(self)
-        self._timer.timeout.connect(self._tick)
-        self._timer.start(115)
-
-    def set_mode(self, mood: str, *, temporary_ms: int = 0):
-        if temporary_ms:
-            self._flash_mood = mood
-            self._hold_until = time.monotonic() + temporary_ms / 1000.0
-        else:
-            self._base_mood = mood
-        self._expression = self._choose(mood)
-        self._next_refresh = time.monotonic() + 0.5
-        self.update()
-
-    def _choose(self, mood: str) -> str:
-        pools = {
-            'listening': ['open', 'open', 'open', 'curious', 'wink', 'blink'],
-            'thinking': ['squint', 'focus', 'focus', 'thinking', 'scan'],
-            'happy': ['smile', 'smile', 'wink', 'open'],
-            'warning': ['flat', 'squint', 'uneasy'],
-            'sleepy': ['droop', 'droop', 'flat', 'blink', 'doze'],
-            'dozing': ['doze', 'doze', 'flat'],
-            'idle': ['open', 'wink', 'curious', 'blink'],
-        }
-        return random.choice(pools.get(mood, pools['idle']))
-
-    def _tick(self):
-        if not self.isVisible():
-            return
-        now = time.monotonic()
-        cursor = QCursor.pos()
-        moved = (abs(cursor.x() - self._last_cursor.x()) +
-                 abs(cursor.y() - self._last_cursor.y())) > 7
-        if moved:
-            slept = now - self._last_activity
-            self._last_activity = now
-            self._last_cursor = cursor
-            if slept > 120 and not self._flash_mood:
-                self.set_mode('happy', temporary_ms=700)
-        position = self.mapFromGlobal(cursor)
-        gaze = (max(-4, min(4, int((position.x() - self.width()/2) / 55))),
-                max(-2, min(2, int((position.y() - self.height()/2) / 55))))
-        if gaze != self._gaze:
-            self._gaze = gaze
-            self.update()
-        if self._flash_mood and now >= self._hold_until:
-            self._flash_mood = None
-            self._next_refresh = 0
-        if now < self._next_refresh:
-            return
-        mood = self._flash_mood or self._base_mood
-        if not self._flash_mood and mood in ('listening', 'idle'):
-            idle_seconds = now - self._last_activity
-            if idle_seconds >= 300:
-                mood = 'dozing'
-            elif idle_seconds >= 95:
-                mood = 'sleepy'
-        self._expression = self._choose(mood)
-        self._next_refresh = now + (0.16 if self._expression == 'blink' else
-                                    1.0 if mood == 'thinking' else 2.4)
-        self.update()
-
-    def paintEvent(self, event):
-        p = QPainter(self)
-        p.setRenderHint(QPainter.RenderHint.Antialiasing)
-        aura = QRadialGradient(self.width()/2, self.height()/2, 44)
-        aura.setColorAt(0, QColor(255, 255, 255, 13))
-        aura.setColorAt(1, QColor(255, 255, 255, 0))
-        p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(QBrush(aura))
-        p.drawRoundedRect(self.rect(), 15, 15)
-
-        color = QColor('#FAFAFC')  # white-green light from the reference
-        p.setPen(QPen(color, 3.8, Qt.PenStyle.SolidLine,
-                      Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
-        p.setBrush(Qt.BrushStyle.NoBrush)
-        left, right = (26, 13), (68, 13)
-
-        def circle(c, radius=7):
-            x, y = c
-            p.setBrush(QColor('#FFFFFF'))
-            p.drawEllipse(QRect(x-radius, y-radius, radius*2, radius*2))
-            p.setBrush(Qt.BrushStyle.NoBrush)
-            if self._expression not in ('blink', 'doze'):
-                dx, dy = self._gaze
-                p.setPen(Qt.PenStyle.NoPen)
-                p.setBrush(QColor('#3A3A41'))
-                p.drawEllipse(QRect(x+dx-2, y+dy-2, 4, 4))
-                p.setBrush(Qt.BrushStyle.NoBrush)
-                p.setPen(QPen(color, 3.8, Qt.PenStyle.SolidLine,
-                              Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
-
-        def flat(c):
-            x, y = c
-            p.drawLine(x-9, y, x+9, y)
-
-        def angle(c, leftward=True):
-            x, y = c
-            if leftward:
-                p.drawLine(x-8, y-7, x+3, y)
-                p.drawLine(x-8, y+7, x+3, y)
-            else:
-                p.drawLine(x+8, y-7, x-3, y)
-                p.drawLine(x+8, y+7, x-3, y)
-
-        def w(c):
-            x,y=c
-            p.drawLine(x-10,y-5,x-4,y+5)
-            p.drawLine(x-4,y+5,x,y-1)
-            p.drawLine(x,y-1,x+4,y+5)
-            p.drawLine(x+4,y+5,x+10,y-5)
-
-        expr = self._expression
-        if expr == 'open':
-            circle(left); circle(right)
-        elif expr in ('blink', 'flat', 'doze'):
-            flat(left); flat(right)
-        elif expr == 'wink':
-            circle(left, 7); angle(right, False)
-        elif expr == 'curious':
-            circle(left, 5); circle(right, 8)
-        elif expr in ('focus', 'scan'):
-            circle(left, 5); angle(right, False)
-        elif expr == 'squint':
-            angle(left); angle(right, False)
-        elif expr == 'thinking':
-            angle(left); circle(right, 6)
-        elif expr == 'smile':
-            w(left); w(right)
-        elif expr == 'droop':
-            p.drawArc(QRect(25, 9, 18, 18), 0, 180*16)
-            p.drawArc(QRect(75, 9, 18, 18), 0, 180*16)
-        elif expr == 'uneasy':
-            flat(left); angle(right, False)
-        else:
-            circle(left); circle(right)
-        p.end()
 
 
 class DropHeader(QFrame):
@@ -369,7 +215,7 @@ class MobiusWindow(QWidget):
         self._recoverable = False
         # Ordinary launches stay desktop-only. Debug mode pins the overlay
         # until the user can visually confirm the window is functioning.
-        self._show_over_apps = False  # Never cover another app by default, even in debug mode
+        self._show_over_apps = True   # A minimal top-edge file-drop tip is always accessible
         self._edge_hover_since = None
         self._last_left_down = False
         self._expanded_at = 0.0
@@ -497,6 +343,12 @@ class MobiusWindow(QWidget):
         self.tools_scroller.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.tools_scroller.setWidget(self.tools_inner)
         file_layout.addWidget(self.tools_scroller, 1)
+        self.tools_scroller.hide()  # File Studio now lives in a separate radial palette.
+        self.radial_button = QPushButton('Open radial File Studio')
+        self.radial_button.setObjectName('primaryButton')
+        attach(self.radial_button, 'file', size=15, color='#161616')
+        self.radial_button.clicked.connect(self.open_radial_studio)
+        file_layout.addWidget(self.radial_button)
         bottom = QHBoxLayout()
         self.format_label = QLabel('OUTPUT')
         self.format_label.setObjectName('sectionLabel')
@@ -542,6 +394,10 @@ class MobiusWindow(QWidget):
         self.quick.hide()
 
         self.panel.hide()
+        # Standalone centered radial wheel; eyes remain in the top island.
+        self.radial = RadialStudio(self)
+        self.radial.files_chosen.connect(self._set_radial_files)
+        self.radial.operation_requested.connect(self._run_radial_operation)
 
         self._animation = QPropertyAnimation(self, b'geometry', self)
         self._animation.setDuration(385)
@@ -677,7 +533,8 @@ class MobiusWindow(QWidget):
         self.tray.setToolTip('Mobius • selalu mendengarkan saat aktif')
         menu = QMenu()
         menu.addAction('Tampilkan Mobius  ·  Ctrl+Alt+M', self.force_expand)
-        self.pin_action = menu.addAction('Indikator tipis saat aplikasi aktif')
+        menu.addAction('Buka File Studio radial', self.open_radial_studio)
+        self.pin_action = menu.addAction('Indikator untuk drag file di atas aplikasi')
         self.pin_action.setCheckable(True)
         self.pin_action.setChecked(self._show_over_apps)
         self.pin_action.toggled.connect(self.set_show_over_apps)
@@ -699,7 +556,7 @@ class MobiusWindow(QWidget):
         self.tray.show()
 
     def set_show_over_apps(self, enabled):
-        """Optional compact overlay; never force-enable it on startup."""
+        """Opt-out control for the minimal always-accessible file-drop tip."""
         self._show_over_apps = bool(enabled)
         # Apply the current foreground policy immediately.
         self._sync_desktop_visibility()
@@ -707,7 +564,8 @@ class MobiusWindow(QWidget):
     def _show_context_menu(self, pos):
         menu = QMenu(self)
         menu.addAction('Buka Mobius', self.force_expand)
-        pin = menu.addAction('Indikator tipis saat aplikasi aktif')
+        menu.addAction('Buka File Studio radial', self.open_radial_studio)
+        pin = menu.addAction('Indikator untuk drag file di atas aplikasi')
         pin.setCheckable(True)
         pin.setChecked(self._show_over_apps)
         pin.toggled.connect(self.set_show_over_apps)
@@ -1138,15 +996,31 @@ class MobiusWindow(QWidget):
         self._collapse_timer.start(1300)
         super().dragLeaveEvent(event)
 
+    def open_radial_studio(self, paths=None):
+        """The file converter opens centrally without growing the camera island."""
+        if isinstance(paths, (list, tuple)) and eligible_files(list(paths)):
+            self._set_radial_files(list(paths))
+        self.radial.set_files(self.pending)
+        self.radial.show_centered()
+        if self._expanded:
+            self.set_expanded(False)
+
+    def _set_radial_files(self, paths):
+        if eligible_files(paths):
+            self.pending = list(paths)
+            self._set_file_summary()
+
+    def _run_radial_operation(self, key):
+        self.radial.hide()
+        self.request_operation(key)
+
     def _drag_enter(self, event):
         paths = _paths(event)
-        if paths and all(p.suffix.lower() in PDF | WORD | IMAGES for p in paths):
+        if eligible_files(paths):
             event.acceptProposedAction()
-            self.carousel.go_to(4, animated=False)
             self._drag_active = True
-            self._temporary_until = time.monotonic() + 8
-            if not self._expanded:
-                self.set_expanded(True)
+            self._set_radial_files(paths)
+            self.open_radial_studio(paths)
         else:
             event.ignore()
 
@@ -1156,19 +1030,16 @@ class MobiusWindow(QWidget):
     def _drop(self, event, action):
         paths = _paths(event)
         self._drag_active = False
-        if not paths:
+        if not eligible_files(paths):
             event.ignore()
             return
         event.acceptProposedAction()
-        self.pending = paths
-        self.carousel.go_to(4, animated=False)
-        self._set_file_summary()
-        self._temporary_until = time.monotonic() + 25
-        self.set_expanded(True)
+        self._set_radial_files(paths)
+        self.open_radial_studio(paths)
+        self.note.setText('File diterima. Pilih sektor konversi pada lingkaran.')
         if action:
-            self.request_operation(action)
-        else:
-            self.note.setText('File diterima. Pilih alat konversi yang sesuai.')
+            # A direct drop onto an existing conversion tile keeps working.
+            self._run_radial_operation(action)
 
     def _set_file_summary(self):
         self.selected_file.setText(self.pending[0].name[:36] if len(self.pending)==1 else
