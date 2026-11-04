@@ -264,7 +264,7 @@ Long-term alternative: a Rust native Windows island and an independently install
 ### New expanded behavior
 
 - **Separate carousel pages**, rather than mixing all tools in one long panel: Music (purple), Lyrics (sky blue), Focus Timer (amber), Water Reminder (blue), File Studio (neutral), and Assistant (soft lime). Everything uses a dark charcoal foundation rather than bright green panels.
-- Navigate with the left/right arrows, six clickable indicator dots, horizontal touchpad wheel, or Shift+mouse-wheel. Feature transitions slide horizontally (360 ms); island compact↔expanded geometry morphs over 385 ms.
+- Navigate with the left/right arrows, six clickable indicator dots, horizontal touchpad wheel, or Shift+mouse-wheel. Feature transitions slide horizontally (360 ms); island compact↔expanded geometry morphs over 385 ms. **Expanded height adapts per page:** compact music/focus cards, medium lyrics/water cards, and a taller File Studio for the 3×3 conversion grid.
 - All existing music transport controls, opt-in synced lyrics, Pomodoro, local hydration tracking, drag/drop file conversion and no-wake-word Indonesian voice commands remain accessible.
 - Dragging a PDF/image/Word file to Mobius automatically selects the File Studio carousel page. The voice command to show lyrics selects the Lyrics page.
 
