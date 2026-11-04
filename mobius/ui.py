@@ -656,15 +656,15 @@ class MobiusWindow(QWidget):
         p.fillPath(shape, QColor("#050507"))
         # Horizontal spectrum: orange at left, warm red at right.
         p.fillRect(QRect(0, max(0, h-35), w, min(h, 35)),
-                   gradient(0, 0, w, 0))
+                   QBrush(gradient(0, 0, w, 0)))
         # Black above, transparent at bottom, for a smooth fade.
         fade = QLinearGradient(0, max(0, h-38), 0, h)
         fade.setColorAt(0, QColor("#050507"))
         fade.setColorAt(.44, QColor("#050507"))
         fade.setColorAt(1, QColor(5, 5, 7, 0))
-        p.fillRect(QRect(0, max(0, h-39), w, min(h, 39)), fade)
+        p.fillRect(QRect(0, max(0, h-39), w, min(h, 39)), QBrush(fade))
         p.fillRect(QRect(0, max(0, h-23), w, min(h, 23)),
-                   island_glow(w * .5, h+3, max(100, w * .62)))
+                   QBrush(island_glow(w * .5, h+3, max(100, w * .62))))
         p.restore()
         p.setPen(QPen(QColor(255, 255, 255, 16), 1))
         p.setBrush(Qt.BrushStyle.NoBrush)
