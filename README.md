@@ -230,3 +230,23 @@ Whisper/AI models already downloaded remain in the user cache and do not need re
 **Standalone EXE:** Run `build-windows.bat` on Windows, or open GitHub Actions → **Build Mobius Windows EXE** → Run workflow and download the EXE artifact after a successful run. `Mobius.iss` optionally builds a per-user Inno Setup installer when the compiler is available. The EXE bundles Python libraries but NOT the Whisper/Qwen model weights; those require a one-time local setup/download.
 
 **Tests:** The GitHub Actions Windows regression workflow runs `pytest -q tests`. Checks include text/voice intent simulations, offline LRC parsing, music bridge helpers, focus transitions, water settings persistence, and Qt quick-deck startup. Music session compatibility, mic/audio playback, and packaging still need testing on the user's actual Windows laptop.
+
+## v0.7.1 — Startup diagnosis and leaner packaging
+
+**If PowerShell displays no window:** The default compact island deliberately hides over active browser/terminal windows. Run the debug launcher, which temporarily forces the panel to remain visible:
+
+```powershell
+cd "$HOME\Documents\Mobius-GitHub"
+git pull --ff-only origin main
+.\run-debug-windows.bat
+```
+
+Debug output records these stages to `%USERPROFILE%\Documents\Mobius\mobius-startup.log`: Python entrypoint, imported UI, before/after QApplication, before/after MobiusWindow, window shown, event loop. It also opens the expanded panel even when PowerShell is the foreground app. If the log stops at `Before QApplication constructor`, the issue is Windows/Qt initialization, not the island auto-hide rule.
+
+**Isolate Qt itself:** Run `./test-qt-windows.bat` from the repo. This opens a small Qt test window, without any AI/voice/media/document modules, and closes automatically. If it cannot create QApplication, check Python/Qt environment and Qt-related environment variables before changing Mobius code. If it opens normally, compare with `mobius-startup.log` to find where Mobius stalls.
+
+An intentional Ctrl+C produces `KeyboardInterrupt`, which **is not proof of an app crash**. The old `run-windows.bat` uses pythonw.exe and does not display console errors; use the debug launcher when troubleshooting.
+
+**Why Nusa is ~3 MB and Mobius used to be >200 MB:** Nusa's official site describes it as a native Rust + GPU application. Mobius uses bundled Python, Qt Widgets, local document conversion libraries and faster-whisper. A PyInstaller `--onefile` executable contains the runtimes and libraries and unpacks them when launched. Models such as Whisper and Ollama are separate downloads. The packaging now depends on `PySide6-Essentials`, rather than full PySide6 (which also includes Qt Addons/WebEngine/PDF), and explicitly excludes unused Qt WebEngine/PDF widgets from the build. Actual EXE size must be measured from the new Windows CI build. Existing virtual environments are left untouched; the dependency change applies to clean installs.
+
+Long-term alternative: a Rust native Windows island and an independently installed, on-demand local AI/document conversion worker. This is an architectural migration, not just a PyInstaller compression flag; do not expect all AI and PDF functionality in a single 3 MB file.
