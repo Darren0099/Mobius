@@ -121,6 +121,7 @@ def test_browser_foreground_collapses_previously_open_panel(monkeypatch):
     monkeypatch.setattr(w, 'underMouse', lambda: False)
     monkeypatch.setattr(QCursor, 'pos', lambda: QPoint(-1000, -1000))
     w._last_foreground_class = 'WorkerW'
+    w.show()
     w.set_expanded(True)
     w._manual_override = True
     w._temporary_until = __import__('time').monotonic() + 300
