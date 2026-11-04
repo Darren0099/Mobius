@@ -68,5 +68,5 @@ def test_ui_keeps_studio_and_voice_as_independent_pages():
     source = (Path(__file__).resolve().parents[1] / "mobius" / "ui.py").read_text(encoding="utf-8")
     assert 'self.carousel.add_page(self.file_page, "File Studio"' in source
     assert 'self.carousel.add_page(self.assistant_page, "Assistant"' in source
-    assert "self.carousel.go_to(4, animated=False)" in source
+    assert "self.radial.show_centered()" in source
     assert "self._glance.tick(now, options)" in source
