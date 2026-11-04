@@ -1,4 +1,4 @@
-# MOBIUS v0.8 · Dark Carousel Island, Offline Assistant + File Studio
+# MOBIUS — Sunset Island (source development)
 
 **Mobius** adalah asisten Windows 10/11 yang mendengarkan perintah setelah startup dan menyatukan konversi dokumen serta asisten suara dalam **satu layar**. Mata robot putih terlihat saat desktop aktif; ketika browser atau aplikasi lain terbuka, Mobius menyisakan garis tipis di tengah tepi atas yang menjadi target drag-and-drop. File Studio tampil sebagai menu radial terpisah di tengah layar. Tidak ada layanan cloud yang menerima rekaman suara atau file.
 
@@ -368,3 +368,23 @@ To diagnose window creation separately, use `.\run-debug-windows.bat`. Normal vi
     .\run-windows.bat
 
 Test by dragging a file from Explorer onto the top-center stripe while Chrome is active. Only file-compatible sectors should respond. Avoid running Mobius elevated: Windows may block dropping files from Explorer into administrator-level apps.
+
+## Sunset UI revision — November 4, 2026 (source only)
+
+This section supersedes earlier visual descriptions. EXE/installer packaging remains on hold until the user explicitly approves the final design.
+
+- **Desktop:** A compact black camera notch with an orange–coral–red glow and original white, kaomoji-inspired vector face (mouths, blink, wink, sleepy, happy, curious, worried, surprised, angry and other expressions). Pupil movement and expression transitions are animated by Qt.
+- **Other foreground applications:** Only a 34×4 logical-pixel BLACK stripe is drawn. Its invisible 96×14 logical-pixel drop target remains available without covering the tab bar. The full compact eyes return automatically when the desktop becomes foreground.
+- **Independent radial File Studio:** Drag a local image, PDF or DOC/DOCX onto the top stripe. A centered 450×450 logical-pixel wheel shows all nine existing conversion operations. Enabled sectors are orange-to-red and slightly offset; a compatible hovered slice smoothly pops outward by up to about 16 px like a separated cake slice. Incompatible sectors remain gray and inert.
+- **Compact Music/Lyrics/Focus/Water:** tighter card typography, orange/coral feature accents, small transport controls, highlighted lyric line, animated focus ring and clock, animated water ring plus hourly chart. Bottle and reminder configuration lives in its own settings face instead of overcrowding the card.
+- All new visual elements are drawn locally by Qt, without downloading emoji, icon fonts, GIF assets or third-party artwork. The supplied references inform the look, not a direct copy of their pixel assets.
+
+### Update from GitHub (no EXE build)
+
+    cd "$HOME\Documents\Mobius-GitHub"
+    git pull --ff-only origin main
+    .\run-windows.bat
+
+Quit the previous Mobius instance via the system tray first. Do not run build-windows.bat. Keep the already-installed Whisper/Ollama models. Debugging, if necessary: run-debug-windows.bat and the local mobius-startup.log.
+
+Windows CI tests exercise Qt construction, radial actions, focus/water display and visibility. Real appearance, Windows display scaling, browser hover and live file dragging still need user-laptop verification.
