@@ -1,4 +1,4 @@
-# v0.8.2 compact clickable island; smooth browser hide/reveal and outside-click dismissal.
+# v0.8.3 tiny monochrome island, white typography and local Qt vector icons.
 name: Build Mobius Windows EXE
 
 on:
