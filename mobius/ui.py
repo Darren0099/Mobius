@@ -25,6 +25,7 @@ from .desktop_visibility import foreground_class, should_show, left_mouse_down
 from .hotkey import RecoveryHotkey
 from .voice_commands import should_handle_utterance, normalized_utterance
 from .voice_feedback import SpeechFeedback, english_confirmation
+from .quick_deck import QuickDeck
 
 COLORS = {
     'bg': '#141414', 'tile': '#222322', 'tile_hover': '#303328', 'line': '#454941',
@@ -289,7 +290,7 @@ class InterpretWorker(QObject):
 class MobiusWindow(QWidget):
     """Unified always-listening assistant and drag-drop file tool island."""
     COMPACT_W, COMPACT_H = 170, 46
-    OPEN_W, OPEN_H = 838, 485
+    OPEN_W, OPEN_H = 838, 510
 
     def __init__(self):
         super().__init__()
@@ -322,6 +323,7 @@ class MobiusWindow(QWidget):
         self.feedback = SpeechFeedback()  # local English Windows SAPI, background thread
         self._last_voice_phrase = ''
         self._last_voice_at = 0.0
+        self._quick_extra = 0
         self.setStyleSheet(self._style())
 
         self.header = DropHeader(self)
@@ -364,6 +366,12 @@ class MobiusWindow(QWidget):
         self.assistant_response.setWordWrap(True)
         self.assistant_response.setMinimumHeight(48)
         panel_layout.addWidget(self.assistant_response)
+        # A unified quick-deck: music, lyrics, focus and water live above
+        # the existing file tools, without switching assistant/studio modes.
+        self.quick = QuickDeck(self.panel)
+        self.quick.changed.connect(self._quick_changed)
+        self.quick.alert.connect(self._quick_alert)
+        panel_layout.addWidget(self.quick)
         title_row = QHBoxLayout()
         self.selection = QLabel('DROP FILE  /  PILIH KONVERSI')
         self.selection.setObjectName('sectionLabel')
@@ -426,6 +434,17 @@ class MobiusWindow(QWidget):
         return """
         QWidget { color: #FBF8EF; font-family: 'Urbanist', 'Segoe UI', Arial; }
         #dropHeader, #panel { background: transparent; }
+        #quickPage { background: #13251D; border: 1px solid #30674A; border-radius: 14px; }
+        #quickTrack { color: #F5FFF7; font-size: 13px; font-weight: 700; }
+        #quickClock { color: #C7FF10; font-size: 37px; font-weight: 900; }
+        #quickHint { color: #A7C9B4; font-size: 10px; }
+        #quickLyrics { background: #0C1715; color: #E6FFEF; border: 1px solid #38644B; border-radius: 10px; }
+        #quickLyrics::item:selected { background: #336C45; color: #F7FFE6; }
+        #quickButton { background: #213D2F; color: #DDF7E4; border: 1px solid #35684B; border-radius: 10px; }
+        #quickButton:checked { background: #A3FF37; color: #0A1D12; }
+        #quickPrimary { background: #C7FF10; color: #0C2113; border-radius: 10px; }
+        QProgressBar { background: #172D24; color: #101910; border: 1px solid #406E50; border-radius: 8px; text-align: center; }
+        QProgressBar::chunk { background: #A1FF2B; border-radius: 7px; }
         #sectionLabel { color: #C7FF10; font-weight: 800; }
         #assistantTitle { font-size: 20px; font-weight: 800; color: #F5F5F8; }
         #assistantStatus { font-size: 11px; color: #C7FF10; font-weight: 700; }
@@ -563,6 +582,24 @@ class MobiusWindow(QWidget):
         p.drawPath(body)
         p.end()
 
+    def _quick_changed(self, opened: bool):
+        self._quick_extra = 232 if opened else 0
+        if not self._expanded:
+            self.force_expand()
+            return
+        self._animation.stop()
+        self._animation.setStartValue(self.geometry())
+        self._animation.setEndValue(
+            self._rect(self.OPEN_W, self.OPEN_H + self._quick_extra))
+        self._animation.start()
+
+    def _quick_alert(self, message: str):
+        self.eyes.set_mode('happy', temporary_ms=2200)
+        self._notify(message)
+        if self.tray is not None:
+            self.tray.showMessage('Mobius', message[:170],
+                                  QSystemTrayIcon.MessageIcon.Information, 3500)
+
     def set_expanded(self, expanded):
         if self._expanded == expanded and self._animation.state() != QPropertyAnimation.State.Running:
             return
@@ -571,7 +608,7 @@ class MobiusWindow(QWidget):
         self.panel.setVisible(expanded)
         self._animation.setStartValue(self.geometry())
         self._animation.setEndValue(self._rect(self.OPEN_W if expanded else self.COMPACT_W,
-                                               self.OPEN_H if expanded else self.COMPACT_H))
+                                               (self.OPEN_H + self._quick_extra) if expanded else self.COMPACT_H))
         self._animation.start()
         self.update()
 
@@ -916,6 +953,7 @@ class MobiusWindow(QWidget):
             QTimer.singleShot(400, self.start_voice)
 
     def stop_voice(self):
+        self.quick.stop()
         self.feedback.stop()
         self._recovery_hotkey.stop()
         self.listening_enabled = False
