@@ -770,7 +770,7 @@ class MobiusWindow(QWidget):
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         w, h = self.width(), self.height()
-        radius = 20 if self._expanded else 17
+        radius = min(20 if self._expanded else 17, max(2, h // 2))
         shape = QPainterPath()
         shape.moveTo(0, 0)
         shape.lineTo(w, 0)
@@ -935,6 +935,7 @@ class MobiusWindow(QWidget):
         self._animation.stop()
         self._hide_animating = False
         self._tip_mode = True
+        self.header.hide()  # a tiny tip must not display clipped robot eyes
         if not self.isVisible():
             self.setGeometry(self._rect(36, 6))
             self.show()
@@ -958,6 +959,7 @@ class MobiusWindow(QWidget):
         self._animation.stop()
         self._hide_animating = False
         self._tip_mode = False
+        self.header.show()
         self._animation.setDuration(285)
         self._animation.setEasingCurve(QEasingCurve.Type.OutQuart)
         if was_hidden:
@@ -994,6 +996,7 @@ class MobiusWindow(QWidget):
             self._expanded_at = time.monotonic()
         self._hide_animating = False
         self._tip_mode = False
+        self.header.show()
         self._animation.stop()
         self._animation.setDuration(285)
         self._animation.setEasingCurve(QEasingCurve.Type.OutQuart)
