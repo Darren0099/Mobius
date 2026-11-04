@@ -375,6 +375,8 @@ class MobiusWindow(QWidget):
         self._last_voice_phrase = ''
         self._last_voice_at = 0.0
         self._quick_extra = 0
+        self._compact_width = self.COMPACT_W
+        self._island_status_visible = False
         self._voice_media_pending = None
         self.setStyleSheet(self._style())
 
@@ -388,6 +390,14 @@ class MobiusWindow(QWidget):
         self.eyes = Eyes(self.header)
         self.eyes.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
         bar.addWidget(self.eyes, 0, Qt.AlignmentFlag.AlignCenter)
+        self.island_status = QLabel('')
+        self.island_status.setObjectName('islandStatus')
+        self.island_status.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.island_status.setMinimumWidth(110)
+        self.island_status.setMaximumWidth(180)
+        self.island_status.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        self.island_status.hide()
+        bar.addWidget(self.island_status)
         bar.addStretch(1)
 
         self.panel = QFrame(self)
@@ -425,6 +435,7 @@ class MobiusWindow(QWidget):
         self.quick.alert.connect(self._quick_alert)
         self.quick.media.message.connect(self._spoken_media_success)
         self.quick.media.error.connect(self._spoken_media_error)
+        self.quick.media.snapshot.connect(self._refresh_island_status)
         panel_layout.addWidget(self.quick)
         title_row = QHBoxLayout()
         self.selection = QLabel('DROP FILE  /  PILIH KONVERSI')
@@ -481,6 +492,10 @@ class MobiusWindow(QWidget):
         self.visibility_timer.timeout.connect(self._sync_desktop_visibility)
         self.visibility_timer.start(260)
         self._set_idle_eye()
+        self._island_pulse = QTimer(self)
+        self._island_pulse.setInterval(1000)
+        self._island_pulse.timeout.connect(self._refresh_island_status)
+        self._island_pulse.start()
         # Mic worker starts by itself, without opening a panel or needing a click.
         QTimer.singleShot(900, self.start_voice)
 
@@ -488,6 +503,7 @@ class MobiusWindow(QWidget):
         return """
         QWidget { color: #FBF8EF; font-family: 'Urbanist', 'Segoe UI', Arial; }
         #dropHeader, #panel { background: transparent; }
+        #islandStatus { color: #E9FFE5; font-size: 11px; font-weight: 750; padding-left: 3px; }
         #quickPage { background: #13251D; border: 1px solid #30674A; border-radius: 14px; }
         #quickTrack { color: #F5FFF7; font-size: 13px; font-weight: 700; }
         #quickClock { color: #C7FF10; font-size: 37px; font-weight: 900; }
@@ -657,6 +673,35 @@ class MobiusWindow(QWidget):
         p.drawEllipse(QRect(w//2-3, 1, 6, 4))
         p.end()
 
+    def _refresh_island_status(self, *_):
+        # Idle = eyes only. Playing media or a focus session can temporarily
+        # extend the island with glanceable information.
+        focus = self.quick.store.focus
+        media = self.quick.current_media
+        line = ''
+        if focus.deadline is not None:
+            remain = focus.remaining()
+            line = f'◴  {remain // 60:02d}:{remain % 60:02d}'
+        elif media.get('available') and media.get('status') == 'playing':
+            if self.quick.lyrics:
+                from .lyrics import active_line
+                idx = active_line(self.quick.lyrics, media.get('position', 0))
+                if 0 <= idx < len(self.quick.lyrics):
+                    line = self.quick.lyrics[idx][1]
+            if not line:
+                line = '♫  ' + (media.get('title') or 'Playing')
+        self.island_status.setText(line[:28] + ('…' if len(line) > 28 else ''))
+        visible = bool(line)
+        if visible != self._island_status_visible:
+            self._island_status_visible = visible
+            self.island_status.setVisible(visible)
+            self._compact_width = 342 if visible else self.COMPACT_W
+            if not self._expanded:
+                self._animation.stop()
+                self._animation.setStartValue(self.geometry())
+                self._animation.setEndValue(self._rect(self._compact_width, self.COMPACT_H))
+                self._animation.start()
+
     def _quick_changed(self, opened: bool):
         self._quick_extra = 232 if opened else 0
         if not self._expanded:
@@ -700,7 +745,7 @@ class MobiusWindow(QWidget):
         self._animation.stop()
         self.panel.setVisible(expanded)
         self._animation.setStartValue(self.geometry())
-        self._animation.setEndValue(self._rect(self.OPEN_W if expanded else self.COMPACT_W,
+        self._animation.setEndValue(self._rect(self.OPEN_W if expanded else self._compact_width,
                                                (self.OPEN_H + self._quick_extra) if expanded else self.COMPACT_H))
         self._animation.start()
         self.update()
@@ -1094,6 +1139,7 @@ class MobiusWindow(QWidget):
             QTimer.singleShot(400, self.start_voice)
 
     def stop_voice(self):
+        self._island_pulse.stop()
         self.quick.stop()
         self.feedback.stop()
         self._recovery_hotkey.stop()
