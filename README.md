@@ -325,3 +325,24 @@ git pull --ff-only origin main
 ```
 
 Debug mode keeps the panel visible over PowerShell for inspection; use `.\run-windows.bat` for normal desktop-only behavior. Optional .exe and .iss installer packaging remain available through GitHub Actions.
+
+## Source-only overlay visibility fix (EXE build intentionally paused)
+
+**Current development status: source-only.** Do not generate or publish a new Windows EXE/Setup for these changes until the project owner explicitly confirms the island behavior is final.
+
+- Desktop foreground: display Mobius's compact white robot eyes (with periodic, limited-size glances).
+- Chrome, VS Code, File Explorer or any other foreground app: by default the island shrinks to the top edge for ~235 ms and **hides fully**. This overrides previously opened panels; Alt+Tab does not leave a 408px panel covering an app.
+- Optional tray setting **'Indikator tipis saat aplikasi aktif'**: only a 36×6 logical-pixel line remains instead of a full island. No eyes are clipped into this tip.
+- To access while another app is open: hover around the screen's top-center 6-pixel edge for ~0.7 s. The small white-eye island reappears smoothly. A user who explicitly opens a panel or interacts with its controls can continue using it. After clicking away, it returns to the appropriate desktop/foreground state.
+- File-picker and other modal dialog windows are exempt from automatic parent hiding while they are active.
+- For this iteration, only the GitHub source branch and Windows unit/regression test workflow are updated. The packaging workflow and pre-existing installer remain unchanged.
+
+Update and test the *source*, without building an EXE:
+
+```powershell
+cd "$HOME\Documents\Mobius-GitHub"
+git pull --ff-only origin main
+.\run-windows.bat
+```
+
+To diagnose window creation separately, use `.\run-debug-windows.bat`. Normal visibility behavior is best tested with `run-windows.bat` because debug intentionally expands the panel initially.
