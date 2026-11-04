@@ -758,6 +758,14 @@ class MobiusWindow(QWidget):
                 line = "♫  " + (media.get("title") or "Playing music")
             options.append(("music", line, "#C88BFF"))
 
+        # Refresh text during the same 10-second glimpse without extending it:
+        # the focus countdown and synchronized lyrics should remain live.
+        if self._glance.kind not in ("eyes", "event") and now < self._glance.until:
+            for kind, message, accent in options:
+                if kind == self._glance.kind:
+                    self._glance.message = message
+                    self._glance.accent = accent
+                    break
         self._glance.tick(now, options)
         glance_visible = bool(self._glance.message)
         line = self._glance.message
