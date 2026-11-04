@@ -66,7 +66,14 @@ class IslandCarousel(QWidget):
 
     def add_page(self, widget: QWidget, title: str, accent: str):
         widget.setParent(self.viewport)
-        widget.setObjectName("carouselContent")
+        widget.setObjectName({
+            "Music": "musicPage",
+            "Lyrics": "lyricsPage",
+            "Focus Timer": "focusPage",
+            "Water Reminder": "waterPage",
+            "File Studio": "filePage",
+            "Assistant": "assistantPage",
+        }.get(title, "carouselContent"))
         widget.hide()
         self.pages.append(widget)
         self.labels.append(title)
