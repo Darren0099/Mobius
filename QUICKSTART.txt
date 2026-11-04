@@ -1,4 +1,4 @@
-MOBIUS v0.8.2 — SMALL DARK LIVING ISLAND (Windows 10/11)
+MOBIUS v0.8.3 — COMPACT MONOCHROME LIVING ISLAND (Windows 10/11)
 
 A. PULL THE UPDATE
 1. Quit the older Mobius instance using its system-tray icon.
@@ -44,3 +44,11 @@ D. IF IT DOES NOT OPEN
 - Crash log: %USERPROFILE%\Documents\Mobius\mobius-error.log
 
 See README.md for detailed behavior, privacy and limitations.
+
+E. MONOCHROME DESIGN (v0.8.3)
+- Compact eyes: 124 x 38 logical pixels (before Windows display scaling).
+- Clock/battery: automatic content width, capped at 240 logical pixels.
+- Expanded island: 408 logical pixels wide with internal scrollable tools.
+- Bright-white text with clear contrast; restrained graphite base.
+- Real custom-drawn Qt vector icons, not emoji or remote favicon fonts.
+- Clean Segoe UI Variable / Segoe UI typography; subdued borders and motion.
