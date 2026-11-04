@@ -1,6 +1,6 @@
 ; User-level Mobius installer. Build Mobius.exe first.
 #define AppName "Mobius"
-#define AppVersion "0.7.0"
+#define AppVersion "0.8.0"
 #define AppExe "Mobius.exe"
 
 [Setup]
