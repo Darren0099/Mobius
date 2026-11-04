@@ -498,14 +498,17 @@ class MobiusWindow(QWidget):
             ("Focus Timer", "#F0B56D"),
             ("Water Reminder", "#4BBEFF"),
         )
-        for label, accent in self.feature_pages:
+        for (label, accent), height in zip(self.feature_pages, (198, 260, 192, 305)):
             page = self.quick.pages.widget(0)
             if page is None:
                 raise RuntimeError("Quick feature widget is missing")
             self.quick.pages.removeWidget(page)
-            self.carousel.add_page(page, label, accent)
-        self.carousel.add_page(self.file_page, "File Studio", "#E5E7EB")
-        self.carousel.add_page(self.assistant_page, "Assistant", "#A6EE74")
+            self.carousel.add_page(page, label, accent, content_height=height)
+        self.carousel.add_page(self.file_page, "File Studio", "#E5E7EB",
+                               content_height=390)
+        self.carousel.add_page(self.assistant_page, "Assistant", "#A6EE74",
+                               content_height=225)
+        self.carousel.page_changed.connect(self._page_selected)
         panel_layout.addWidget(self.carousel)
         self.quick.hide()
 
@@ -787,16 +790,24 @@ class MobiusWindow(QWidget):
                 self._animation.setEndValue(self._rect(target_width, self.COMPACT_H))
                 self._animation.start()
 
-    def _quick_changed(self, opened: bool):
-        self._quick_extra = 232 if opened else 0
+    def _expanded_target_height(self) -> int:
+        return 150 + self.carousel.current_height
+
+    def _page_selected(self, index: int, title: str):
+        """Smoothly adapt island height when a different carousel page opens."""
         if not self._expanded:
-            self.force_expand()
             return
         self._animation.stop()
         self._animation.setStartValue(self.geometry())
         self._animation.setEndValue(
-            self._rect(self.OPEN_W, self.OPEN_H + self._quick_extra))
+            self._rect(self.OPEN_W, self._expanded_target_height()))
         self._animation.start()
+
+    def _quick_changed(self, opened: bool):
+        # Compatibility with legacy QuickDeck signals; the carousel owns
+        # expansion and page sizing in v0.8.
+        if self._expanded:
+            self._page_selected(self.carousel.current_index, "")
 
     def _spoken_media_success(self, message: str):
         action = self._voice_media_pending
@@ -834,7 +845,7 @@ class MobiusWindow(QWidget):
         self.panel.setVisible(expanded)
         self._animation.setStartValue(self.geometry())
         self._animation.setEndValue(self._rect(self.OPEN_W if expanded else self._compact_width,
-                                               (self.OPEN_H + self._quick_extra) if expanded else self.COMPACT_H))
+                                               self._expanded_target_height() if expanded else self.COMPACT_H))
         self._animation.start()
         self.update()
 
