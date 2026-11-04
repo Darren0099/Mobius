@@ -14,5 +14,4 @@ def trace_startup(stage: str) -> None:
     message = f"[{datetime.now().isoformat(timespec='seconds')}] {stage}"
     print(message, flush=True)
     with (LOG_DIR / "mobius-startup.log").open("a", encoding="utf-8") as log:
-        log.write(message + "\n"
-        )
+        log.write(message + "\n")
