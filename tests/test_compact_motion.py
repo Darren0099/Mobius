@@ -84,8 +84,8 @@ def test_hide_animation_shrinks_instead_of_immediate_hide(monkeypatch):
     w._start_hide_morph()
     assert w._hide_animating
     assert w.isVisible()
-    assert w._animation.endValue().width() == 36
-    assert w._animation.endValue().height() == 6
+    assert w._animation.endValue().width() == w.TIP_W
+    assert w._animation.endValue().height() == w.TIP_H
     w._on_morph_finished()
     assert not w.isVisible()
     w._start_reveal_morph()
@@ -95,14 +95,14 @@ def test_hide_animation_shrinks_instead_of_immediate_hide(monkeypatch):
     cleanup(w)
 
 
-def test_opt_in_tip_is_only_six_pixels_high(monkeypatch):
+def test_tip_is_large_enough_to_accept_file_drop(monkeypatch):
     w = build_window(monkeypatch)
     w.show()
     w._start_tip_morph()
     assert w._tip_mode
-    assert w.header.isHidden()  # no clipped robot eyes in the six-pixel tip
-    assert w._animation.endValue().width() == 36
-    assert w._animation.endValue().height() == 6
+    assert w.header.isHidden()  # stripe stays visible while eyes are hidden
+    assert w._animation.endValue().width() == w.TIP_W
+    assert w._animation.endValue().height() == w.TIP_H
     w._start_reveal_morph()
     assert not w._tip_mode
     assert not w.header.isHidden()
