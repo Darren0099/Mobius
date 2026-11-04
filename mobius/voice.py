@@ -29,20 +29,21 @@ class VoiceWorker(QObject):
 
     SAMPLE_RATE = 16000
     BLOCK_SAMPLES = 1600  # 100 ms
-    PRE_ROLL_BLOCKS = 6   # never lose the first syllable
-    SILENCE_BLOCKS = 8    # finish after 0.8 seconds of relative silence
+    PRE_ROLL_BLOCKS = 8   # keep first 0.8 seconds to avoid clipped first words
+    SILENCE_BLOCKS = 7    # complete after 0.7 seconds of silence
     MAX_BLOCKS = 120     # cap a single utterance at 12 seconds
 
-    def __init__(self, continuous: bool = True):
+    def __init__(self, continuous: bool = True, suppress_event: threading.Event | None = None):
         super().__init__()
         self.continuous = continuous
         self._stop = threading.Event()
+        self.suppress_event = suppress_event or threading.Event()
 
     def stop(self):
         self._stop.set()
 
     def _transcribe(self, model, samples, np):
-        if self._stop.is_set() or not len(samples):
+        if self._stop.is_set() or self.suppress_event.is_set() or not len(samples):
             return
         rms = float(np.sqrt(np.mean(samples * samples)))
         if rms < 0.0012:
@@ -58,7 +59,9 @@ class VoiceWorker(QObject):
                                "buka notepad, cari resep di browser, buka Chrome, "
                                "putar musik, ubah PDF menjadi gambar.")
             phrase = " ".join(seg.text for seg in segments).strip()
-            if phrase:
+            if phrase and not self.suppress_event.is_set():
+                # Visible in the panel for diagnostics; no audio file is stored.
+                self.status.emit("Terdengar: " + phrase[:110])
                 self.success.emit(phrase)
         finally:
             self.status.emit("Mendengarkan perintah...")
@@ -117,6 +120,14 @@ class VoiceWorker(QObject):
                         block = chunks.get(timeout=0.2)
                     except queue.Empty:
                         continue
+                    # Ignore Mobius's own English TTS and clear partial voice
+                    # fragments; otherwise the speaker can trigger a loop.
+                    if self.suppress_event.is_set():
+                        preroll.clear()
+                        phrase_blocks = []
+                        speech_blocks = 0
+                        quiet_blocks = 0
+                        continue
                     rms = float(np.sqrt(np.mean(block * block)))
                     speaking = gate.is_speech(rms, continuing=bool(phrase_blocks))
                     if not phrase_blocks:
@@ -136,7 +147,7 @@ class VoiceWorker(QObject):
 
                     if (quiet_blocks >= self.SILENCE_BLOCKS
                             or len(phrase_blocks) >= self.MAX_BLOCKS):
-                        if speech_blocks >= 3:
+                        if speech_blocks >= 2:  # short commands may be ~0.3 seconds
                             audio = np.concatenate(phrase_blocks).astype(np.float32)
                             self._transcribe(model, audio, np)
                         phrase_blocks = []
