@@ -361,7 +361,9 @@ class MobiusWindow(QWidget):
         self._was_visible = True
         self._manual_override = False
         self._recoverable = False
-        self._show_over_apps = False  # defaults to desktop-only as requested
+        # Ordinary launches stay desktop-only. Debug mode pins the overlay
+        # until the user can visually confirm the window is functioning.
+        self._show_over_apps = os.environ.get('MOBIUS_DEBUG_VISIBLE') == '1'
         self._edge_hover_since = None
         self.pending: list[Path] = []
         self.destination = Path.home() / 'Documents' / 'Mobius'
@@ -551,7 +553,7 @@ class MobiusWindow(QWidget):
         menu.addAction('Tampilkan Mobius  ·  Ctrl+Alt+M', self.force_expand)
         self.pin_action = menu.addAction('Sematkan island di semua aplikasi')
         self.pin_action.setCheckable(True)
-        self.pin_action.setChecked(False)
+        self.pin_action.setChecked(self._show_over_apps)
         self.pin_action.toggled.connect(self.set_show_over_apps)
         self.mic_action = menu.addAction('Mikrofon aktif')
         self.mic_action.setCheckable(True)
@@ -1164,12 +1166,22 @@ class MobiusWindow(QWidget):
 
 
 def start():
+    # This sequence distinguishes a Qt-native hang from a hidden desktop overlay.
+    from app import trace_startup
+    trace_startup('Before QApplication constructor')
     app = QApplication(sys.argv)
+    trace_startup('QApplication constructed')
     app.setApplicationName('Mobius')
     app.setOrganizationName('Mobius')
     app.setQuitOnLastWindowClosed(False)
     app.setFont(QFont('Urbanist', 10))
+    trace_startup('Before MobiusWindow constructor')
     window = MobiusWindow()
+    trace_startup('MobiusWindow constructed')
     window.show()
+    trace_startup('Window.show() called')
+    if os.environ.get('MOBIUS_DEBUG_VISIBLE') == '1':
+        QTimer.singleShot(350, window.force_expand)
     app.aboutToQuit.connect(window.stop_voice)
+    trace_startup('Entering Qt event loop')
     sys.exit(app.exec())
