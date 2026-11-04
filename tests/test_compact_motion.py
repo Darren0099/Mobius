@@ -100,10 +100,12 @@ def test_opt_in_tip_is_only_six_pixels_high(monkeypatch):
     w.show()
     w._start_tip_morph()
     assert w._tip_mode
+    assert w.header.isHidden()  # no clipped robot eyes in the six-pixel tip
     assert w._animation.endValue().width() == 36
     assert w._animation.endValue().height() == 6
     w._start_reveal_morph()
     assert not w._tip_mode
+    assert not w.header.isHidden()
     assert w._animation.endValue().width() == w.COMPACT_W
     cleanup(w)
 
@@ -130,4 +132,30 @@ def test_browser_foreground_collapses_previously_open_panel(monkeypatch):
     assert not w._manual_override
     assert w._temporary_until == 0
     assert w._hide_animating
+    cleanup(w)
+
+
+def test_hover_reveals_tip_even_when_chrome_is_foreground(monkeypatch):
+    import mobius.ui as ui
+    from PySide6.QtCore import QPoint
+    from PySide6.QtGui import QCursor
+    w = build_window(monkeypatch)
+    w._recoverable = True
+    w._show_over_apps = True
+    w.show()
+    w._start_tip_morph()
+    w._animation.stop()
+    assert w._tip_mode
+    screen = w._screen()
+    top_center = QPoint(screen.x() + screen.width() // 2, screen.y() + 2)
+    monkeypatch.setattr(QCursor, "pos", lambda: top_center)
+    monkeypatch.setattr(ui, "foreground_class", lambda: "Chrome_WidgetWin_1")
+    monkeypatch.setattr(ui, "left_mouse_down", lambda: False)
+    monkeypatch.setattr(w, "isActiveWindow", lambda: False)
+    monkeypatch.setattr(w, "underMouse", lambda: False)
+    w._edge_hover_since = time.monotonic() - 1
+    w._sync_desktop_visibility()
+    assert not w._tip_mode
+    assert w._temporary_until > time.monotonic()
+    assert w._animation.endValue().height() == w.COMPACT_H
     cleanup(w)
