@@ -19,7 +19,9 @@ from PySide6.QtWidgets import (
 )
 
 from .lyrics import active_line, load_lrc, search_lrclib
-from .vector_icons import attach
+from .vector_icons import attach, icon
+from .arc_meter import ArcMeter
+from .theme import ORANGE, CORAL
 from .chime import play_soft_chime
 from .media_bridge import MediaBridge
 from .wellness import WellnessStore
@@ -29,7 +31,8 @@ class WaterBars(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.bars = [0] * 24
-        self.setMinimumHeight(56)
+        self.setMinimumHeight(36)
+        self.setMaximumHeight(46)
 
     def set_hours(self, values):
         self.bars = values[:24]
@@ -46,7 +49,7 @@ class WaterBars(QWidget):
             bar_w = width / 24 * .72
             x = 5 + h * width / 24
             size = self.bars[h] / top * height
-            p.setBrush(QColor("#F0F0F3" if self.bars[h] else "#2D2D33"))
+            p.setBrush(QColor(CORAL if self.bars[h] else "#34323A"))
             p.drawRoundedRect(int(x), int(height - size + 3), max(2, int(bar_w)),
                               max(3, int(size)), 2, 2)
         p.end()
@@ -91,7 +94,7 @@ class QuickDeck(QWidget):
     def _build(self):
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
-        outer.setSpacing(8)
+        outer.setSpacing(5)
         nav = QHBoxLayout()
         nav.setSpacing(8)
         self.nav = []
@@ -123,152 +126,239 @@ class QuickDeck(QWidget):
             self.changed.emit(self._active_page >= 0)
 
     def _music_page(self):
+        """Tight player card: artwork mark, track, transport and thin seek."""
         widget = QFrame()
         layout = QVBoxLayout(widget)
-        self.track = QLabel("No player detected · start Spotify / YouTube / Apple Music")
+        layout.setContentsMargins(9, 7, 9, 6)
+        layout.setSpacing(5)
+
+        top = QHBoxLayout()
+        top.setSpacing(10)
+        cover = QLabel()
+        cover.setObjectName("musicCover")
+        cover.setFixedSize(51, 51)
+        cover.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        cover.setPixmap(icon("music", 26).pixmap(26, 26))
+        top.addWidget(cover)
+        detail = QVBoxLayout()
+        detail.setContentsMargins(0, 2, 0, 0)
+        detail.setSpacing(2)
+        self.track = QLabel("No player detected")
         self.track.setWordWrap(True)
         self.track.setObjectName("quickTrack")
-        layout.addWidget(self.track)
-        buttons = QHBoxLayout()
-        for action, glyph, tooltip in (
+        detail.addWidget(self.track)
+        self.media_status = QLabel("Spotify, Apple Music or browser session")
+        self.media_status.setObjectName("quickHint")
+        detail.addWidget(self.media_status)
+        top.addLayout(detail, 1)
+        layout.addLayout(top)
+
+        transport = QHBoxLayout()
+        transport.setSpacing(5)
+        for action, glyph, tip in (
             ("previous", "previous", "Previous track"),
-            ("toggle", "play", "Play or pause"),
+            ("toggle", "play", "Pause or play"),
             ("next", "next", "Next track"),
         ):
-            control = button("", lambda _=False, a=action: self.media.control(a),
-                             glyph=glyph)
-            control.setToolTip(tooltip)
-            control.setFixedWidth(44)
-            buttons.addWidget(control)
-        layout.addLayout(buttons)
+            b = button("", lambda _=False, a=action: self.media.control(a), glyph=glyph)
+            b.setFixedSize(38, 29)
+            b.setToolTip(tip)
+            transport.addWidget(b)
+        transport.addStretch(1)
+        layout.addLayout(transport)
+
         self.seek = QSlider(Qt.Orientation.Horizontal)
         self.seek.setRange(0, 1000)
-        self.seek.setToolTip("Seek playback position if supported by your music player")
+        self.seek.setToolTip("Seek playback position if supported")
         self.seek.sliderReleased.connect(self._seek_requested)
         layout.addWidget(self.seek)
-        self.media_status = QLabel("Uses Windows media sessions · player-dependent")
-        self.media_status.setObjectName("quickHint")
-        layout.addWidget(self.media_status)
         return widget
 
     def _lyrics_page(self):
         widget = QFrame()
         layout = QVBoxLayout(widget)
+        layout.setContentsMargins(8, 5, 8, 5)
+        layout.setSpacing(5)
         controls = QHBoxLayout()
-        controls.addWidget(button("Open .LRC", self._open_lrc, glyph="folder"))
+        controls.setSpacing(5)
+        controls.addWidget(button("Open LRC", self._open_lrc, glyph="folder"))
         controls.addWidget(button("Find lyrics", self._find_online, glyph="search"))
         controls.addStretch()
         layout.addLayout(controls)
         split = QHBoxLayout()
-        split.setSpacing(12)
+        split.setSpacing(6)
         left = QFrame()
         left.setObjectName("lyricLeft")
         left_layout = QVBoxLayout(left)
-        left_layout.setContentsMargins(14, 10, 12, 10)
+        left_layout.setContentsMargins(8, 6, 8, 6)
+        left_layout.setSpacing(4)
         self.lyric_song = QLabel("Waiting for music")
         self.lyric_song.setObjectName("quickTrack")
         self.lyric_song.setWordWrap(True)
         left_layout.addWidget(self.lyric_song)
-        self.lyric_live = QLabel("Synced line will appear here")
+        self.lyric_live = QLabel("Timed lyrics appear here")
         self.lyric_live.setObjectName("lyricLive")
         self.lyric_live.setWordWrap(True)
         left_layout.addWidget(self.lyric_live, 1)
         split.addWidget(left, 2)
         self.lyric_list = QListWidget()
         self.lyric_list.setObjectName("quickLyrics")
-        self.lyric_list.setMinimumHeight(95)
-        self.lyric_list.setMaximumHeight(140)
+        self.lyric_list.setMinimumHeight(90)
+        self.lyric_list.setMaximumHeight(120)
         self.lyric_list.itemClicked.connect(self._lyric_clicked)
         split.addWidget(self.lyric_list, 3)
         layout.addLayout(split)
-        self.lyric_hint = QLabel("Timed .lrc works offline · online lookup sends song metadata only")
+        self.lyric_hint = QLabel("LRC: offline  |  lookup: optional internet")
         self.lyric_hint.setWordWrap(True)
         self.lyric_hint.setObjectName("quickHint")
         layout.addWidget(self.lyric_hint)
         return widget
 
     def _focus_page(self):
+        """Single-row Pomodoro ring and clock, short action buttons."""
         widget = QFrame()
         layout = QVBoxLayout(widget)
+        layout.setContentsMargins(8, 5, 8, 5)
+        layout.setSpacing(4)
+
+        hero = QHBoxLayout()
+        hero.setSpacing(11)
+        self.focus_ring = ArcMeter("timer", 78)
+        hero.addWidget(self.focus_ring)
+        metrics = QVBoxLayout()
+        metrics.setSpacing(0)
         self.focus_time = QLabel("25:00")
         self.focus_time.setObjectName("quickClock")
-        layout.addWidget(self.focus_time, alignment=Qt.AlignmentFlag.AlignCenter)
-        row = QHBoxLayout()
-        row.addWidget(button("Start / Pause", self._toggle_focus, primary=True, glyph="play"))
-        row.addWidget(button("Reset", self._reset_focus, glyph="reset"))
-        row.addStretch()
-        row.addWidget(QLabel("Focus"))
+        metrics.addWidget(self.focus_time)
+        self.focus_hint = QLabel("Focus · paused")
+        self.focus_hint.setObjectName("quickHint")
+        metrics.addWidget(self.focus_hint)
+        hero.addLayout(metrics, 1)
+
+        config = QVBoxLayout()
+        config.setSpacing(2)
+        row1 = QHBoxLayout()
+        row1.setSpacing(3)
+        row1.addWidget(QLabel("Focus"))
         self.focus_minutes = QSpinBox()
         self.focus_minutes.setRange(5, 120)
         self.focus_minutes.setValue(self.store.focus.work_minutes)
+        self.focus_minutes.setFixedWidth(52)
         self.focus_minutes.valueChanged.connect(self._focus_options)
-        row.addWidget(self.focus_minutes)
-        row.addWidget(QLabel("Break"))
+        row1.addWidget(self.focus_minutes)
+        config.addLayout(row1)
+        row2 = QHBoxLayout()
+        row2.setSpacing(3)
+        row2.addWidget(QLabel("Break"))
         self.break_minutes = QSpinBox()
         self.break_minutes.setRange(1, 45)
         self.break_minutes.setValue(self.store.focus.break_minutes)
+        self.break_minutes.setFixedWidth(52)
         self.break_minutes.valueChanged.connect(self._focus_options)
-        row.addWidget(self.break_minutes)
-        layout.addLayout(row)
-        self.focus_hint = QLabel("Stay focused. A soft system chime marks each transition.")
-        self.focus_hint.setObjectName("quickHint")
-        layout.addWidget(self.focus_hint)
+        row2.addWidget(self.break_minutes)
+        config.addLayout(row2)
+        hero.addLayout(config)
+        layout.addLayout(hero)
+
+        actions = QHBoxLayout()
+        actions.setSpacing(5)
+        actions.addWidget(button("Start / Pause", self._toggle_focus,
+                                 primary=True, glyph="play"))
+        actions.addWidget(button("Reset", self._reset_focus, glyph="reset"))
+        actions.addStretch()
+        layout.addLayout(actions)
         return widget
 
     def _water_page(self):
+        """Two compact faces: hydration summary and editable reminder settings."""
         widget = QFrame()
-        layout = QVBoxLayout(widget)
+        outer = QVBoxLayout(widget)
+        outer.setContentsMargins(8, 5, 8, 5)
+        outer.setSpacing(0)
+        self.water_stack = QStackedWidget(widget)
+        outer.addWidget(self.water_stack)
+
+        overview = QFrame()
+        layout = QVBoxLayout(overview)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(5)
+        hero = QHBoxLayout()
+        hero.setSpacing(9)
+        self.water_ring = ArcMeter("water", 66)
+        self.water_ring.set_fraction(0)
+        hero.addWidget(self.water_ring)
+        info = QVBoxLayout()
+        info.setSpacing(2)
+        self.water_total = QLabel("0 / 2000 ml")
+        self.water_total.setObjectName("waterTotal")
+        info.addWidget(self.water_total)
+        self.water_hint = QLabel("Daily hydration")
+        self.water_hint.setObjectName("quickHint")
+        info.addWidget(self.water_hint)
+        hero.addLayout(info, 1)
+        layout.addLayout(hero)
+
+        actions = QHBoxLayout()
+        actions.setSpacing(6)
+        actions.addWidget(button("Add water", self._drink, primary=True, glyph="water"))
+        actions.addWidget(button("Settings", lambda: self.water_stack.setCurrentIndex(1)))
+        actions.addStretch(1)
+        layout.addLayout(actions)
         self.water_progress = QProgressBar()
         self.water_progress.setRange(0, 100)
-        self.water_progress.setTextVisible(True)
+        self.water_progress.setFixedHeight(9)
+        self.water_progress.setTextVisible(False)
         layout.addWidget(self.water_progress)
-        row = QHBoxLayout()
-        row.addWidget(button("Add water", self._drink, primary=True, glyph="water"))
-        row.addWidget(QLabel("Bottle (ml)"))
+        self.water_chart = WaterBars()
+        layout.addWidget(self.water_chart)
+        self.water_stack.addWidget(overview)
+
+        settings = QFrame()
+        grid = QGridLayout(settings)
+        grid.setContentsMargins(4, 4, 4, 4)
+        grid.setHorizontalSpacing(7)
+        grid.setVerticalSpacing(5)
+        grid.addWidget(QLabel("Bottle / ml"), 0, 0)
         self.bottle_size = QSpinBox()
         self.bottle_size.setRange(50, 1500)
         self.bottle_size.setSingleStep(50)
         self.bottle_size.setValue(self.store.water.bottle_ml)
         self.bottle_size.valueChanged.connect(self._water_options)
-        row.addWidget(self.bottle_size)
-        row.addWidget(QLabel("Goal (ml)"))
+        grid.addWidget(self.bottle_size, 0, 1)
+        grid.addWidget(QLabel("Goal / ml"), 0, 2)
         self.daily_goal = QSpinBox()
         self.daily_goal.setRange(250, 6000)
         self.daily_goal.setSingleStep(250)
         self.daily_goal.setValue(self.store.water.goal_ml)
         self.daily_goal.valueChanged.connect(self._water_options)
-        row.addWidget(self.daily_goal)
-        layout.addLayout(row)
-        hours = QHBoxLayout()
-        hours.addWidget(QLabel("Remind from"))
+        grid.addWidget(self.daily_goal, 0, 3)
+
+        grid.addWidget(QLabel("From"), 1, 0)
         self.water_start = QSpinBox()
         self.water_start.setRange(0, 22)
         self.water_start.setSuffix(":00")
         self.water_start.setValue(self.store.water.active_start_hour)
         self.water_start.valueChanged.connect(self._water_options)
-        hours.addWidget(self.water_start)
-        hours.addWidget(QLabel("until"))
+        grid.addWidget(self.water_start, 1, 1)
+        grid.addWidget(QLabel("Until"), 1, 2)
         self.water_end = QSpinBox()
         self.water_end.setRange(1, 24)
         self.water_end.setSuffix(":00")
         self.water_end.setValue(self.store.water.active_end_hour)
         self.water_end.valueChanged.connect(self._water_options)
-        hours.addWidget(self.water_end)
-        hours.addWidget(QLabel("Every"))
+        grid.addWidget(self.water_end, 1, 3)
+        grid.addWidget(QLabel("Reminder every"), 2, 0, 1, 2)
         self.water_interval = QSpinBox()
         self.water_interval.setRange(15, 240)
         self.water_interval.setSingleStep(15)
         self.water_interval.setSuffix(" min")
         self.water_interval.setValue(self.store.water.interval_minutes)
         self.water_interval.valueChanged.connect(self._water_options)
-        hours.addWidget(self.water_interval)
-        hours.addStretch()
-        layout.addLayout(hours)
-        self.water_chart = WaterBars()
-        layout.addWidget(self.water_chart)
-        self.water_hint = QLabel("Hourly chart · reminders: 09:00–20:00, every 60 min")
-        self.water_hint.setObjectName("quickHint")
-        layout.addWidget(self.water_hint)
+        grid.addWidget(self.water_interval, 2, 2, 1, 2)
+        done = button("Back to overview", lambda: self.water_stack.setCurrentIndex(0),
+                      glyph="left")
+        grid.addWidget(done, 3, 0, 1, 4)
+        self.water_stack.addWidget(settings)
         self._render_water()
         return widget
 
@@ -398,9 +488,11 @@ class QuickDeck(QWidget):
         timer = self.store.focus
         remaining = timer.remaining()
         self.focus_time.setText(f"{remaining // 60:02d}:{remaining % 60:02d}")
+        total = (timer.work_minutes if timer.mode == "focus" else timer.break_minutes) * 60
+        self.focus_ring.set_fraction(remaining / max(1, total))
         mode = "Focus" if timer.mode == "focus" else "Break"
         running = "running" if timer.deadline is not None else "paused"
-        self.focus_hint.setText(f"{mode} · {running} · {timer.completed_sessions} sessions completed")
+        self.focus_hint.setText(f"{mode}  ·  {running}  ·  {timer.completed_sessions} sessions")
 
     def _water_options(self):
         self.store.water.bottle_ml = self.bottle_size.value()
@@ -430,6 +522,8 @@ class QuickDeck(QWidget):
         percent = int(100 * total / max(1, water.goal_ml))
         self.water_progress.setValue(min(100, percent))
         self.water_progress.setFormat(f"{total} / {water.goal_ml} ml · {percent}%")
+        self.water_ring.set_fraction(min(1.0, total / max(1, water.goal_ml)))
+        self.water_total.setText(f"{total:,} / {water.goal_ml:,} ml")
         self.water_chart.set_hours(water.hourly_chart())
 
     def _tick(self):
