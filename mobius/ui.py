@@ -1316,7 +1316,7 @@ class MobiusWindow(QWidget):
             self.mic_action.blockSignals(False)
         if not enabled and self.voice_worker is not None:
             self.voice_worker.stop()
-            self.assistant_status.setText('○  MIKROFON NONAKTIF')
+            self.assistant_status.setText('Mikrofon nonaktif')
         self._set_idle_eye()
         if enabled and self.voice_thread is None:
             self.start_voice()
@@ -1369,7 +1369,7 @@ class MobiusWindow(QWidget):
     def _voice_finished(self):
         self.voice_thread = self.voice_worker = None
         if not self.listening_enabled:
-            self.assistant_status.setText('○  MIKROFON NONAKTIF')
+            self.assistant_status.setText('Mikrofon nonaktif')
             self._set_idle_eye()
         elif not self._voice_failed:
             self._set_idle_eye()
