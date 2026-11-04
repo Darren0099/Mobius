@@ -9,10 +9,10 @@ from mobius.ambient import GlanceController, PowerState, clock_label
 
 def test_glance_rotates_and_returns_to_eyes_after_ten_seconds():
     controller = GlanceController(interval_seconds=30, duration_seconds=10, start_now=0)
-    choices = [("clock", "◷  10:35", "#EAEAF0"), ("battery", "⚡ 64%", "#8BF570")]
+    choices = [("clock", "10:35", "#FAFAFC"), ("battery", "64% Charging", "#FAFAFC")]
     assert controller.tick(29, choices) == "eyes"
     assert controller.tick(30, choices) == "clock"
-    assert controller.message == "◷  10:35"
+    assert controller.message == "10:35"
     assert controller.tick(39.9, choices) == "clock"
     assert controller.tick(40, choices) == "eyes"
     assert controller.message == ""
@@ -30,10 +30,10 @@ def test_power_event_interrupts_periodic_cycle_and_expires():
 
 
 def test_power_labels_and_clock():
-    assert PowerState(42, False).label == "▰ 42% · On battery"
-    assert PowerState(87, True).label == "⚡ 87% · Charging"
+    assert PowerState(42, False).label == "42% Battery"
+    assert PowerState(87, True).label == "87% Charging"
     assert PowerState(10, False).accent == "#FF6C63"
-    assert PowerState(70, True).accent == "#8BF570"
+    assert PowerState(70, True).accent == "#F7F7F9"
     assert clock_label(datetime(2026, 11, 4, 10, 35)) == "10:35  ·  04 Nov"
 
 
