@@ -1,4 +1,4 @@
-# MOBIUS v0.7 · Living Island, Offline Assistant + File Studio
+# MOBIUS v0.8 · Dark Carousel Island, Offline Assistant + File Studio
 
 **Mobius** adalah asisten Windows 10/11 yang mendengarkan perintah setelah startup dan menyatukan konversi dokumen serta asisten suara dalam **satu layar**. Bar kecil berwarna lime hanya terlihat saat desktop kosong/aktif. Saat browser atau aplikasi lain sedang aktif, bar disembunyikan, tetapi pendengar suara tetap berjalan. Tidak ada layanan cloud yang menerima rekaman suara atau file.
 
@@ -250,3 +250,38 @@ An intentional Ctrl+C produces `KeyboardInterrupt`, which **is not proof of an a
 **Why Nusa is ~3 MB and Mobius used to be >200 MB:** Nusa's official site describes it as a native Rust + GPU application. Mobius uses bundled Python, Qt Widgets, local document conversion libraries and faster-whisper. A PyInstaller `--onefile` executable contains the runtimes and libraries and unpacks them when launched. Models such as Whisper and Ollama are separate downloads. The packaging now depends on `PySide6-Essentials`, rather than full PySide6 (which also includes Qt Addons/WebEngine/PDF), and explicitly excludes unused Qt WebEngine/PDF widgets from the build. Actual EXE size must be measured from the new Windows CI build. Existing virtual environments are left untouched; the dependency change applies to clean installs.
 
 Long-term alternative: a Rust native Windows island and an independently installed, on-demand local AI/document conversion worker. This is an architectural migration, not just a PyInstaller compression flag; do not expect all AI and PDF functionality in a single 3 MB file.
+
+## v0.8 — Dark Carousel / Ambient Glances
+
+### New compact behavior
+
+- The notch has a **flat top attached to the top display edge** and rounded bottom, using dark charcoal/black (#030305 → #15161B). It is a Windows overlay, not a physical modification to the laptop camera bezel.
+- **Robot eyes remain the default compact appearance:** cursor tracking, blink, wink, thinking, sleepy, drowsy and happy expressions.
+- At approximately **38-second intervals**, a small status glimpse appears (clock/date, native Windows battery/charger percentage, focus countdown or now-playing song/lyrics if available). The glimpse **expires after 10 seconds and returns to eyes**, rather than permanently replacing the robot.
+- Unplugging/connecting the charger prioritizes a battery glimpse; a focus or hydration event can briefly take the glance slot. Charger status is read through `GetSystemPowerStatus` on Windows, without network access.
+- Active desktop / empty foreground → island remains visible. Browser or another foreground application → compact island hides to avoid tab overlap. **Hover at the top center edge for ~0.7 seconds** to reveal it temporarily; the expanded panel stays visible while being used. `Ctrl+Alt+M` and the tray remain alternative entry points.
+
+### New expanded behavior
+
+- **Separate carousel pages**, rather than mixing all tools in one long panel: Music (purple), Lyrics (sky blue), Focus Timer (amber), Water Reminder (blue), File Studio (neutral), and Assistant (soft lime). Everything uses a dark charcoal foundation rather than bright green panels.
+- Navigate with the left/right arrows, six clickable indicator dots, horizontal touchpad wheel, or Shift+mouse-wheel. Feature transitions slide horizontally (360 ms); island compact↔expanded geometry morphs over 385 ms.
+- All existing music transport controls, opt-in synced lyrics, Pomodoro, local hydration tracking, drag/drop file conversion and no-wake-word Indonesian voice commands remain accessible.
+- Dragging a PDF/image/Word file to Mobius automatically selects the File Studio carousel page. The voice command to show lyrics selects the Lyrics page.
+
+### Upgrade existing source installation
+
+Close any running Mobius from its system tray, then open a fresh PowerShell:
+
+```powershell
+cd "$HOME\Documents\Mobius-GitHub"
+git pull --ff-only origin main
+.\run-debug-windows.bat
+```
+
+The debug launcher forces the panel to show even over PowerShell, useful after the earlier hidden-window issue. Once the UI works, normal launch is `.\run-windows.bat`. Keep the existing `.venv`, Whisper cache (`%USERPROFILE%\.mobius\models`) and Ollama models; **no re-download is required**.
+
+To package as an EXE on Windows, run `.\build-windows.bat`, or download an artifact from a successful **Build Mobius Windows EXE** GitHub Actions run. The optional Inno Setup workflow generates `Mobius-Setup.exe`. The EXE includes Python/Qt libraries but does not bundle model weights.
+
+### Verification
+
+`tests/test_ambient_carousel.py` checks exactly ten-second glance expiry and carousel navigation. `tests/test_window_carousel_smoke.py` instantiates the actual Qt window in offscreen mode with all six feature pages, without starting microphone/media workers. Windows CI additionally runs the existing voice, PDF, hydration and lyrics tests. Real laptop interaction/rendering still needs a Windows desktop test.
