@@ -1,4 +1,4 @@
-# Mobius v0.8 dark carousel + glance release; trigger build from verified source.
+# v0.8.1 adaptive-height carousel and ten-second power/clock glances.
 name: Build Mobius Windows EXE
 
 on:
