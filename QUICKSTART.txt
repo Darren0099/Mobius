@@ -1,24 +1,38 @@
-MOBIUS v0.6 — OFFLINE WINDOWS ASSISTANT
+MOBIUS v0.7 — WINDOWS LIVING ISLAND
 
-1. Open PowerShell in C:\Users\user\Documents\Mobius-GitHub.
-2. Update: git pull --ff-only origin main
-3. Launch: .\run-windows.bat (or .\run-debug-windows.bat to see errors).
-4. Voice listens automatically, even if the small island is hidden.
-   Say: "buka kalkulator" — NO "Mobius" wake word needed.
-   Say: "bukain notepad dong" or "cari resep rendang di browser".
-5. Successful actions get short, OFFLINE ENGLISH spoken confirmations
-   using Windows SAPI (English system voice recommended).
-6. For microphone/Whisper/TTS diagnostic without executing commands:
-   .\test-voice-windows.bat
-7. If PySide6/Whisper already works in this Git clone, DO NOT
-   reinstall or re-download models. Whisper model cache is under
-   %USERPROFILE%\.mobius\models.
-8. Show the island: Ctrl+Alt+M or use the system tray icon.
-   The compact island stays off other apps by default.
-9. Shutdown still requires a visual Yes/No confirmation.
-10. Disable microphone in the tray when privacy or ambient-audio
-    false commands are a concern. All speech processing is local.
-11. Ollama + qwen2.5:3b remains optional for more informal questions.
-12. Use build-windows.bat if you want to build an EXE on Windows.
+A. RUN FROM GITHUB (Python 3.12 installed)
+1. Quit any old Mobius process from the system tray.
+2. Open PowerShell and run:
+   cd "$HOME\Documents\Mobius-GitHub"
+   git pull --ff-only origin main
+   .\install-media-windows.bat
+   .\run-debug-windows.bat
+3. The media-install BAT is needed only once for Spotify/Apple Music/YouTube
+   controls exposed through Windows system media sessions.
+4. Whisper already installed? Do not re-download. Otherwise run:
+   .\install-voice-windows.bat
+5. To use local Qwen language understanding, install Ollama + qwen2.5:3b
+   (optional; basic commands still work without it).
 
-More details and test instructions: README.md
+B. USE THE ISLAND
+- Hover the top center edge, or press Ctrl+Alt+M.
+- Idle: glowing lime/emerald robot eyes; look around, blink and get sleepy.
+- Playing song: island shows track name or current synchronized lyric line.
+- Focus timer: island shows time remaining.
+- Open island, then choose MUSIC, LYRICS, FOCUS or WATER above File Studio.
+- Lyrics: Open local .LRC (offline), or explicitly Find lyrics online via LRCLIB.
+- Focus: start, pause, reset; short soft chime between work and break.
+- Water: adjust bottle, daily target, reminder hours and interval; log a drink.
+- Voice: "buka kalkulator", "pause musik", "mulai fokus 25 menit",
+         "catat minum 250 ml", "tampilkan lirik".
+- Voice success confirmations are spoken in English using local Windows SAPI.
+- Model weights and user water logs stay on this PC.
+
+C. BUILD AN EXE
+1. Run .\build-windows.bat on Windows, then open dist\Mobius.exe.
+2. Or use GitHub Actions → Build Mobius Windows EXE → Run workflow.
+   Download Mobius-Windows-EXE artifact when the build is successful.
+3. Optional Mobius-Setup.exe can be generated with Mobius.iss and Inno Setup.
+4. Models are not embedded. A fresh Windows user must download Whisper once.
+
+See README.md for feature details, dependencies and limitations.
